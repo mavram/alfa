@@ -1,2 +1,2 @@
 # alfa
-Minimalist trading application
+A minimalist trading application.

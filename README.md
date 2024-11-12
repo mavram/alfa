@@ -1,0 +1,2 @@
+# alfa
+Minimalist trading application

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS stock (
     id INTEGER PRIMARY KEY,
     symbol TEXT NOT NULL UNIQUE,
-    company TEXT NOT NULL
+    name TEXT NOT NULL
     );
 
 CREATE TABLE IF NOT EXISTS price (
@@ -17,15 +17,17 @@ CREATE TABLE IF NOT EXISTS price (
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );
 
+CREATE TABLE IF NOT EXISTS portfolio (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    watchlist_id INTEGER,
+    FOREIGN KEY (watchlist_id) REFERENCES watchlist (id)
+    );
+
 CREATE TABLE IF NOT EXISTS watchlist (
     id INTEGER PRIMARY KEY,
     stock_id INTEGER,
     FOREIGN KEY (stock_id) REFERENCES stock (id)
-    );
-
-CREATE TABLE IF NOT EXISTS portfolio (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE
     );
 
 CREATE TABLE IF NOT EXISTS position (

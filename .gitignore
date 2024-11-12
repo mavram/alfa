@@ -164,4 +164,4 @@ cython_debug/
 #.idea/
 
 # data files
-alfa.db
+alpha.db

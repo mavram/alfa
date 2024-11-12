@@ -1,13 +1,20 @@
 import sqlite3
 import os
 
-import config
+from alpha.config import DATABASE_PATH
+
+
+def get_sql_scripts_absolute_path():
+    """Returns SQL scripts absolute path."""
+    python_file_relative_directory = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(python_file_relative_directory, "sql")
+
 
 def run_sql_commands(cursor, path, filename):
     """Executes SQL commands from a file."""
     try:
         # Open and read the SQL file
-        with open(os.path.join(path, filename), 'r') as file:
+        with open(os.path.join(path, filename), "r") as file:
             sql_script = file.read()
 
         # Execute the SQL script
@@ -20,6 +27,7 @@ def run_sql_commands(cursor, path, filename):
         print(f"SQLite error while executing {filename}: {e}")
     except Exception as e:
         print(f"An error occurred while executing {filename}: {e}")
+
 
 def run_sql_scripts(database_path, sql_scripts_path, sql_files):
     """Executes SQL scripts from a list."""
@@ -48,13 +56,10 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
             conn.close()
             print("Database connection closed.")
 
-def initialize_db(database_path, sql_scripts_path):
+
+def initialize_db(database_path=None):
     # Get a list of all files in the SQL scripts directory
-    sql_files = ['drop_tables.sql', 'create_tables.sql']
+    sql_files = ["drop_tables.sql", "create_tables.sql"]
 
     # Run all the scripts
-    run_sql_scripts(database_path, sql_scripts_path, sql_files)
-
-# Run the main function
-if __name__ == "__main__":
-    initialize_db(config.DATABASE_PATH, config.SQL_SCRIPTS_PATH)
+    run_sql_scripts(database_path or DATABASE_PATH, get_sql_scripts_absolute_path(), sql_files)

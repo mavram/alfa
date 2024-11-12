@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-from alpha.config import DATABASE_PATH
+from alfa.config import DATABASE_PATH
 
 
 def get_sql_scripts_absolute_path():

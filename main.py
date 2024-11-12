@@ -1,4 +1,4 @@
-from alpha import initialize_db
+from alfa import initialize_db
 
 # Run the main function
 if __name__ == "__main__":

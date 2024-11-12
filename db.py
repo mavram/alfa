@@ -1,24 +1,13 @@
 import sqlite3
 import os
 
-def get_sql_files(path):
-    """Returns a list of SQL filenames from the specified directory."""
-    try:
-        # Get all .sql files from the directory
-        sql_files = [os.path.join(path, f) for f in os.listdir(path) if f.endswith('.sql')]
-        return sql_files
-    except FileNotFoundError:
-        print(f"Error: Directory {path} not found.")
-        return []
-    except Exception as e:
-        print(f"An error occurred while listing SQL files: {e}")
-        return []
+import config
 
-def run_sql(cursor, filename):
+def run_sql_commands(cursor, path, filename):
     """Executes SQL commands from a file."""
     try:
         # Open and read the SQL file
-        with open(filename, 'r') as file:
+        with open(os.path.join(path, filename), 'r') as file:
             sql_script = file.read()
 
         # Execute the SQL script
@@ -32,22 +21,17 @@ def run_sql(cursor, filename):
     except Exception as e:
         print(f"An error occurred while executing {filename}: {e}")
 
-def initialize_db():
-    # Path to the directory containing SQL files
-    sql_directory = 'sql'
-
-    # Get a list of all files in the SQL scripts directory
-    sql_files = get_sql_files(sql_directory)
-
+def run_sql_scripts(database_path, sql_scripts_path, sql_files):
+    """Executes SQL scripts from a list."""
     # Connect to the database
     try:
-        conn = sqlite3.connect('alfa.db')
+        conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
         print("Database connection successful.")
 
         # Execute each SQL file in the list
         for sql_file in sql_files:
-            run_sql(cursor, sql_file)
+            run_sql_commands(cursor, sql_scripts_path, sql_file)
 
         # Commit changes
         conn.commit()
@@ -64,6 +48,13 @@ def initialize_db():
             conn.close()
             print("Database connection closed.")
 
+def initialize_db(database_path, sql_scripts_path):
+    # Get a list of all files in the SQL scripts directory
+    sql_files = ['drop_tables.sql', 'create_tables.sql']
+
+    # Run all the scripts
+    run_sql_scripts(database_path, sql_scripts_path, sql_files)
+
 # Run the main function
 if __name__ == "__main__":
-    initialize_db()
+    initialize_db(config.DATABASE_PATH, config.SQL_SCRIPTS_PATH)

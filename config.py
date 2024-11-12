@@ -1,0 +1,2 @@
+DATABASE_PATH = 'alfa.db'
+SQL_SCRIPTS_PATH = 'sql'

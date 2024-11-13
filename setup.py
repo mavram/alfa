@@ -5,7 +5,7 @@ setup(
     name='alfa',
     version='0.1.1',
     packages=find_packages(),
-    description='A minimialist trading package.',
+    description='A minimalist platform for trading strategy.',
     author='Mircea Avram',
     author_email='mavram@gmail.com',
     install_requires=[

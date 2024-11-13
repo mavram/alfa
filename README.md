@@ -1,2 +1,2 @@
 # alfa
-A minimalist trading application.
+A minimalist platform for trading strategy.

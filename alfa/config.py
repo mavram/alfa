@@ -1,1 +1,1 @@
-DATABASE_PATH = "alpha.db"
+DATABASE_PATH = "data/alpha.db"

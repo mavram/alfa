@@ -8,11 +8,13 @@ setup(
     description='A minimialist trading package.',
     author='Mircea Avram',
     author_email='mavram@gmail.com',
+    install_requires=[
+        'pandas'
+    ],
+    include_package_data=False,
+
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
-    ],
-    install_requires=[
-        'sqlite3'
     ]
 )

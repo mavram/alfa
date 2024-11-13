@@ -1,8 +1,6 @@
 import sqlite3
 import os
 
-from alfa.config import DATABASE_PATH
-
 
 def get_sql_scripts_absolute_path():
     """Returns SQL scripts absolute path."""
@@ -36,9 +34,9 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
     """Executes SQL scripts from a list."""
     # Connect to the database
     try:
-        conn = sqlite3.connect(database_path)
-        cursor = conn.cursor()
-        print("Database connection successful.")
+        with sqlite3.connect(database_path) as conn:
+            cursor = conn.cursor()
+            print("Database connection successful.")
 
         # Execute each SQL file in the list
         for sql_file in sql_files:
@@ -56,21 +54,26 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
         print(f"An unexpected error occurred: {e}")
         return False
 
-    finally:
-        # Ensure the connection is closed
-        if conn:
-            conn.close()
-            print("Database connection closed.")
 
-
-def initialize_db(database_path=None):
+def initialize_db(database_path):
     # Get a list of all files in the SQL scripts directory
     sql_files = ["drop_tables.sql", "create_tables.sql"]
 
     # Run all the scripts
-    run_sql_scripts(database_path or DATABASE_PATH, get_sql_scripts_absolute_path(), sql_files)
+    run_sql_scripts(
+        database_path, get_sql_scripts_absolute_path(), sql_files
+    )
 
 
 # Run the main function
 if __name__ == "__main__":
-    initialize_db()
+    # Path to the directory and database
+    dir_path = "data"
+    db_path = os.path.join(dir_path, "alfa.db")
+
+    # Check if the directory exists, and if not, create it
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+        print(f"Directory '{dir_path}' created.")
+
+    initialize_db(db_path)

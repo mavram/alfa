@@ -9,7 +9,7 @@ setup(
     author='Mircea Avram',
     author_email='mavram@gmail.com',
     install_requires=[
-        'pandas'
+        'yfinance'
     ],
     include_package_data=False,
 

@@ -69,3 +69,8 @@ def initialize_db(database_path=None):
 
     # Run all the scripts
     run_sql_scripts(database_path or DATABASE_PATH, get_sql_scripts_absolute_path(), sql_files)
+
+
+# Run the main function
+if __name__ == "__main__":
+    initialize_db()

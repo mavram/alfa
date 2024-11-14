@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS stock (
+CREATE TABLE IF NOT EXISTS symbol (
     id INTEGER PRIMARY KEY,
     symbol TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL
@@ -19,14 +19,25 @@ CREATE TABLE IF NOT EXISTS price (
 
 CREATE TABLE IF NOT EXISTS portfolio (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    watchlist_id INTEGER,
-    FOREIGN KEY (watchlist_id) REFERENCES watchlist (id)
+    name TEXT NOT NULL UNIQUE
     );
 
-CREATE TABLE IF NOT EXISTS watchlist (
+CREATE TABLE IF NOT EXISTS stock_to_watch (
     id INTEGER PRIMARY KEY,
     stock_id INTEGER,
+    symbol TEXT NOT NULL UNIQUE,
+    portfolio_id INTEGER,
+    FOREIGN KEY (stock_id) REFERENCES stock (id)
+    );
+
+CREATE TABLE IF NOT EXISTS txn (
+    id INTEGER PRIMARY KEY,
+    portfolio_id INTEGER,
+    timestamp NOT NULL,
+    stock_id INTEGER,
+    quantity NOT NULL,
+    price NOT NULL,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );
 
@@ -34,8 +45,11 @@ CREATE TABLE IF NOT EXISTS position (
     id INTEGER PRIMARY KEY,
     portfolio_id INTEGER,
     stock_id INTEGER,
+    symbol TEXT NOT NULL UNIQUE,
     date NOT NULL,
     quantity NOT NULL,
-    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id)
+    average_price NOT NULL,
+    market_price NOT NULL,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );

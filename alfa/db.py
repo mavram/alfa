@@ -38,15 +38,15 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
             cursor = conn.cursor()
             print("Database connection successful.")
 
-        # Execute each SQL file in the list
-        for sql_file in sql_files:
-            if not run_sql_commands(cursor, sql_scripts_path, sql_file):
-                return False
+            # Execute each SQL file in the list
+            for sql_file in sql_files:
+                if not run_sql_commands(cursor, sql_scripts_path, sql_file):
+                    return False
 
-        # Commit changes
-        conn.commit()
-        print("Changes committed successfully.")
-        return True
+            # Commit changes
+            conn.commit()
+            print("Changes committed successfully.")
+            return True
     except sqlite3.Error as e:
         print(f"SQLite connection error: {e}")
         return False

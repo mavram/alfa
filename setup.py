@@ -8,6 +8,7 @@ setup(
     description='A minimalist platform for playing with trading strategies.',
     author='Mircea Avram',
     author_email='mavram@gmail.com',
+    python_requires=">=3.12",
     install_requires=[    
         'dynaconf',
         'setuptools',

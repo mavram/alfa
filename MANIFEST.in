@@ -1,1 +1,5 @@
 recursive-include alfa/sql *
+
+include README.md
+include LICENSE
+include settings.toml

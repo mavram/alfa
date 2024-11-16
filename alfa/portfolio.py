@@ -1,4 +1,94 @@
+from enum import Enum
+from pprint import pprint
 
+
+class Portfolio:
+
+    class TransactionType(Enum):
+        MARKET_ORDER = 1
+        DEPOSIT = 2
+        WITHDRAW = 3
+
+    
+    def __init__(self, name = "__alfa__"):
+        self.name = name
+        self.cash = 0
+        self.positions = {}
+        self.stocks_to_watch = []
+
+    def get_all_positions(self):
+        return self.positions
+
+    def get_position_size(self, symbol):
+        return 0 if symbol not in self.positions else self.positions[symbol]
+
+    def get_cash_balance(self):
+        return self.cash
+
+    def sell(self, symbol, qty, price):
+        if self.get_position_size(symbol) == 0:
+            # TODO: log error
+            return False 
+
+        size = self.positions[symbol]["size"]
+
+        if qty > size:
+            # TODO: log warning
+            # Limit to position size 
+            qty = size
+        # New position size
+        size -= qty
+
+        if size == 0:
+            # Liguidate position
+            self.positions.pop(symbol)
+        else:
+            # Update position size
+            self.positions[symbol]["size"] = size
+
+        self.cash += qty * price
+
+    def buy(self, symbol, qty, price):
+        if self.get_position_size(symbol) == 0:
+            # Initialize position
+            self.positions[symbol] = {"size": 0, "average_price": 0.0}
+
+        size = self.positions[symbol]["size"]
+        average_price = self.positions[symbol]["average_price"]
+
+        # New position size
+        new_size = size + qty
+
+        # Update position with weighted average price
+        self.positions[symbol]["average_price"] = (average_price * size + price * qty) / new_size
+        # Update position size
+        self.positions[symbol]["size"] = new_size
+
+    def withdraw(self, amount):
+        pass
+
+    def deposit(self, amount):
+        pass
+
+
+if __name__ == "__main__":
+    portfolio = Portfolio()
+
+    portfolio.buy("TSLA", 100, 150)
+    positions = portfolio.get_all_positions()
+    for position in positions:
+        pprint(f"{position}:{positions[position]}")
+
+
+    portfolio.buy("TSLA", 100, 170)
+    positions = portfolio.get_all_positions()
+    for position in positions:
+        pprint(f"{position}:{positions[position]}")
+
+    portfolio.sell("TSLA", 50, 180)
+    positions = portfolio.get_all_positions()
+    for position in positions:
+        pprint(f"{position}:{positions[position]}")
 
 
 # import yfinance as yf

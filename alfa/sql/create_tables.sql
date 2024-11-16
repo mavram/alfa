@@ -41,13 +41,13 @@ CREATE TABLE IF NOT EXISTS txn (
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );
 
-CREATE TABLE IF NOT EXISTS position (
+CREATE TABLE IF NOT EXISTS end_of_day_position (
     id INTEGER PRIMARY KEY,
     portfolio_id INTEGER,
     stock_id INTEGER,
     symbol TEXT NOT NULL UNIQUE,
     date NOT NULL,
-    quantity NOT NULL,
+    size NOT NULL,
     average_price NOT NULL,
     market_price NOT NULL,
     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),

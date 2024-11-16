@@ -1,23 +1,25 @@
-# setup.py
 from setuptools import setup, find_packages
 
 setup(
-    name='alfa',
-    version='0.1.1',
+    name="alfa",
+    version="0.1.1",
     packages=find_packages(),
-    description='A minimalist platform for playing with trading strategies.',
-    author='Mircea Avram',
-    author_email='mavram@gmail.com',
+    description="A minimalist platform for playing with trading strategies.",
+    author="Mircea Avram",
+    author_email="mavram@gmail.com",
     python_requires=">=3.12",
-    install_requires=[    
-        'dynaconf',
-        'setuptools',
-        'yfinance'
-    ],
+    install_requires=["dynaconf", "setuptools", "yfinance"],
+    extras_require={
+        "development": [
+            "pytest",
+            "pytest-cov",
+            "black",
+            "flake8",
+        ]
+    },
     include_package_data=True,
-
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MIT License',
-    ]
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+    ],
 )

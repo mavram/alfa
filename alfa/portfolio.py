@@ -13,12 +13,14 @@ class Portfolio:
         return self.positions
 
     def get_position_size(self, symbol):
+        symbol = symbol.upper()
         return 0 if symbol not in self.positions else self.positions[symbol]
 
     def get_cash_balance(self):
         return self.cash
 
     def sell(self, symbol, qty, price):
+        symbol = symbol.upper()
         if self.get_position_size(symbol) == 0:
             # get_logger().error(f"Portfolio {self.name} has no position in {symbol}.")
             return False
@@ -43,9 +45,10 @@ class Portfolio:
 
         self.cash += qty * price
 
-        get_logger().info(f"txn;{symbol};sell;{qty};{price}")
+        get_logger().info(f"Transaction - SELL {qty} {symbol} @ {price}")
 
     def buy(self, symbol, qty, price):
+        symbol = symbol.upper()
         if self.get_position_size(symbol) == 0:
             # Initialize position
             self.positions[symbol] = {"size": 0, "average_price": 0.0}
@@ -63,18 +66,20 @@ class Portfolio:
         # Update position size
         self.positions[symbol]["size"] = new_size
 
-        get_logger().info(f"txn;{symbol};buy;{qty};{price}")
+        get_logger().info(f"Transaction - BUY {qty} {symbol} @ {price}")
 
     def withdraw(self, amount):
         pass
 
     def withdraw_stock(self, symbol, qty):
+        symbol = symbol.upper()
         pass
 
     def deposit(self, amount):
         pass
 
     def deposit_stock(self, symbol, qty):
+        symbol = symbol.upper()
         pass
 
 

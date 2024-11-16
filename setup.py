@@ -8,9 +8,10 @@ setup(
     description='A minimalist platform for playing with trading strategies.',
     author='Mircea Avram',
     author_email='mavram@gmail.com',
-    install_requires=[
-        'yfinance',
-        'setuptools'
+    install_requires=[    
+        'dynaconf',
+        'setuptools',
+        'yfinance'
     ],
     include_package_data=True,
 

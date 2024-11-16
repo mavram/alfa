@@ -1,0 +1,14 @@
+[development]
+log_level = 'DEBUG'
+
+[staging]
+log_level = 'DEBUG'
+
+[testing]
+log_level = 'WARNING'
+
+[production]
+log_level = 'INFO'
+
+[global]
+portfolio_name = 'alpha'

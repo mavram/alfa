@@ -1,17 +1,10 @@
-from enum import Enum
-from pprint import pprint
-
+from dynaconf import settings
+from alfa.util import get_logger
 
 class Portfolio:
 
-    class TransactionType(Enum):
-        MARKET_ORDER = 1
-        DEPOSIT = 2
-        WITHDRAW = 3
-
-    
-    def __init__(self, name = "__alfa__"):
-        self.name = name
+    def __init__(self, name=None):
+        self.name = name or settings.PORTFOLIO_NAME
         self.cash = 0
         self.positions = {}
         self.stocks_to_watch = []
@@ -27,14 +20,16 @@ class Portfolio:
 
     def sell(self, symbol, qty, price):
         if self.get_position_size(symbol) == 0:
-            # TODO: log error
-            return False 
+            # get_logger().error(f"Portfolio {self.name} has no position in {symbol}.")
+            return False
 
         size = self.positions[symbol]["size"]
 
         if qty > size:
-            # TODO: log warning
-            # Limit to position size 
+            # Limit to position size
+            get_logger().info(
+                f"Requested quantity {qty} is capped at {size} {symbol} by {self.name}'s position size."
+            )
             qty = size
         # New position size
         size -= qty
@@ -48,6 +43,8 @@ class Portfolio:
 
         self.cash += qty * price
 
+        get_logger().info(f"txn;{symbol};sell;{qty};{price}")
+
     def buy(self, symbol, qty, price):
         if self.get_position_size(symbol) == 0:
             # Initialize position
@@ -60,41 +57,25 @@ class Portfolio:
         new_size = size + qty
 
         # Update position with weighted average price
-        self.positions[symbol]["average_price"] = (average_price * size + price * qty) / new_size
+        self.positions[symbol]["average_price"] = (
+            average_price * size + price * qty
+        ) / new_size
         # Update position size
         self.positions[symbol]["size"] = new_size
 
+        get_logger().info(f"txn;{symbol};buy;{qty};{price}")
+
     def withdraw(self, amount):
+        pass
+
+    def withdraw_stock(self, symbol, qty):
         pass
 
     def deposit(self, amount):
         pass
 
-    def transfer_in_kind(self, symbol, qty):
+    def deposit_stock(self, symbol, qty):
         pass
-
-    def withdraw_in_kind(self, symbol, qty):
-        pass
-
-
-if __name__ == "__main__":
-    portfolio = Portfolio()
-
-    portfolio.buy("TSLA", 100, 150)
-    positions = portfolio.get_all_positions()
-    for position in positions:
-        pprint(f"{position}:{positions[position]}")
-
-
-    portfolio.buy("TSLA", 100, 170)
-    positions = portfolio.get_all_positions()
-    for position in positions:
-        pprint(f"{position}:{positions[position]}")
-
-    portfolio.sell("TSLA", 50, 180)
-    positions = portfolio.get_all_positions()
-    for position in positions:
-        pprint(f"{position}:{positions[position]}")
 
 
 # import yfinance as yf
@@ -108,13 +89,13 @@ if __name__ == "__main__":
 #     tickers = ['TSLA', 'IBIT']
 #     benchmark_ticker = 'SPY'
 #     shares = [100, 100]
-    
+
 #     # Download data
 #     data = yf.download(tickers + [benchmark_ticker], start=start_date, end=end_date)['Adj Close']
-    
+
 #     # Calculate daily returns
 #     returns = data.pct_change().dropna()
-    
+
 #     # Calculate individual betas
 #     betas = {}
 #     for ticker in tickers:
@@ -124,19 +105,19 @@ if __name__ == "__main__":
 #         X = sm.add_constant(X)
 #         model = sm.OLS(y, X).fit()
 #         betas[ticker] = model.params[benchmark_ticker]
-    
+
 #     # Calculate portfolio beta as weighted average of individual betas
 #     total_value = sum([shares[i] * data[ticker].iloc[-1] for i, ticker in enumerate(tickers)])
 #     weights = [(shares[i] * data[ticker].iloc[-1]) / total_value for i, ticker in enumerate(tickers)]
 #     portfolio_beta = sum([weights[i] * betas[ticker] for i, ticker in enumerate(tickers)])
-    
+
 #     # Calculate portfolio return and benchmark return over the period
 #     portfolio_return = sum([weights[i] * returns[ticker].mean() for i, ticker in enumerate(tickers)]) * len(returns)
 #     benchmark_return = returns[benchmark_ticker].mean() * len(returns)
-    
+
 #     # Calculate alpha
 #     alpha = portfolio_return - (risk_free_rate + portfolio_beta * (benchmark_return - risk_free_rate))
-    
+
 #     return alpha
 
 # # Example usage
@@ -148,11 +129,10 @@ if __name__ == "__main__":
 # print(f"Alpha of the portfolio: {alpha:.2%}")
 
 
-
 #
 # TODOs:
 # [] unit tests
-# [] db connection 
+# [] db connection
 # [] connect positions/portfolio to db
 # [] connect stock to yfinance and db
 # [] cash position
@@ -200,7 +180,7 @@ if __name__ == "__main__":
 #         self.connection = connection
 #         self.cursor = cursor
 
-#     def add_symbol() 
+#     def add_symbol()
 
 # class Portfolio:
 #     def __init__(self, name):
@@ -226,7 +206,7 @@ if __name__ == "__main__":
 
 #     def get_watchlist(self):
 #         return self.watchlist
-    
+
 #     def start_watching(self, symbol):
 #         pass
 
@@ -240,7 +220,7 @@ if __name__ == "__main__":
 #     def __init__(self, db_name="portfolio.db", portfolio_id=None, name=None):
 #         self.conn = sqlite3.connect(db_name)
 #         self.create_tables()
-        
+
 #         if portfolio_id:
 #             # Load existing portfolio
 #             portfolio = self.get_portfolio_by_id(portfolio_id)
@@ -264,7 +244,7 @@ if __name__ == "__main__":
 #                 symbol TEXT NOT NULL UNIQUE,
 #                 name TEXT NOT NULL
 #             )''')
-            
+
 #             self.conn.execute('''
 #             CREATE TABLE IF NOT EXISTS price (
 #                 id INTEGER PRIMARY KEY,
@@ -278,7 +258,7 @@ if __name__ == "__main__":
 #                 volume INTEGER NOT NULL,
 #                 FOREIGN KEY (stock_id) REFERENCES stock (id)
 #             )''')
-            
+
 #             self.conn.execute('''
 #             CREATE TABLE IF NOT EXISTS portfolio (
 #                 id INTEGER PRIMARY KEY,
@@ -286,14 +266,14 @@ if __name__ == "__main__":
 #                 watchlist_id INTEGER,
 #                 FOREIGN KEY (watchlist_id) REFERENCES watchlist (id)
 #             )''')
-            
+
 #             self.conn.execute('''
 #             CREATE TABLE IF NOT EXISTS watchlist (
 #                 id INTEGER PRIMARY KEY,
 #                 stock_id INTEGER,
 #                 FOREIGN KEY (stock_id) REFERENCES stock (id)
 #             )''')
-            
+
 #             self.conn.execute('''
 #             CREATE TABLE IF NOT EXISTS position (
 #                 id INTEGER PRIMARY KEY,

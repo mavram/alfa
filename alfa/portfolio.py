@@ -37,7 +37,7 @@ class Portfolio:
         size -= qty
 
         if size == 0:
-            # Liguidate position
+            # Liquidate position
             self.positions.pop(symbol)
         else:
             # Update position size

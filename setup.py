@@ -12,7 +12,7 @@ setup(
         'yfinance',
         'setuptools'
     ],
-    include_package_data=False,
+    include_package_data=True,
 
     classifiers=[
         'Programming Language :: Python :: 3',

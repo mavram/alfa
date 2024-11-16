@@ -1,36 +1,31 @@
 import sqlite3
 import os
 
-
-def get_sql_scripts_absolute_path():
-    """Returns SQL scripts absolute path."""
-    python_file_relative_directory = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(python_file_relative_directory, "sql")
+from importlib.resources import files
 
 
-def run_sql_commands(cursor, path, filename):
+def run_sql_script(cursor, sql_file):
     """Executes SQL commands from a file."""
     try:
-        # Open and read the SQL file
-        with open(os.path.join(path, filename), "r") as file:
-            sql_script = file.read()
+        # Read the SQL file
+        sql_script = files("alfa.sql").joinpath(sql_file).read_text()
 
         # Execute the SQL script
         cursor.executescript(sql_script)
-        print(f"Successfully executed SQL script: {filename}")
+        print(f"Successfully executed SQL script: {sql_file}")
         return True
     except FileNotFoundError:
-        print(f"Error: File {filename} not found.")
+        print(f"Error: File {sql_file} not found.")
         return False
     except sqlite3.Error as e:
-        print(f"SQLite error while executing {filename}: {e}")
+        print(f"SQLite error while executing {sql_file}: {e}")
         return False
     except Exception as e:
-        print(f"An error occurred while executing {filename}: {e}")
+        print(f"An error occurred while executing {sql_file}: {e}")
         return False
 
 
-def run_sql_scripts(database_path, sql_scripts_path, sql_files):
+def run_sql_scripts(database_path, sql_files):
     """Executes SQL scripts from a list."""
     # Connect to the database
     try:
@@ -40,7 +35,7 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
 
             # Execute each SQL file in the list
             for sql_file in sql_files:
-                if not run_sql_commands(cursor, sql_scripts_path, sql_file):
+                if not run_sql_script(cursor, sql_file):
                     return False
 
             # Commit changes
@@ -56,13 +51,11 @@ def run_sql_scripts(database_path, sql_scripts_path, sql_files):
 
 
 def initialize_db(database_path):
-    # Get a list of all files in the SQL scripts directory
+    # Files in the SQL scripts directory
     sql_files = ["drop_tables.sql", "create_tables.sql"]
 
     # Run all the scripts
-    run_sql_scripts(
-        database_path, get_sql_scripts_absolute_path(), sql_files
-    )
+    run_sql_scripts(database_path, sql_files)
 
 
 # Run the main function

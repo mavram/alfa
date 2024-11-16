@@ -70,6 +70,12 @@ class Portfolio:
     def deposit(self, amount):
         pass
 
+    def transfer_in_kind(self, symbol, qty):
+        pass
+
+    def withdraw_in_kind(self, symbol, qty):
+        pass
+
 
 if __name__ == "__main__":
     portfolio = Portfolio()

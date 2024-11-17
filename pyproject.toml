@@ -36,7 +36,7 @@ profile = "black"
 line_length = 107
 multi_line_output = 3
 include_trailing_comma = true
-skip = ["lib"]
+skip = ["bin", "lib"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose"

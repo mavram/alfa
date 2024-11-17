@@ -70,9 +70,7 @@ class Portfolio:
         new_size = size + qty
 
         # Update position with weighted average price
-        self.positions[symbol]["average_price"] = (
-            average_price * size + price * qty
-        ) / new_size
+        self.positions[symbol]["average_price"] = (average_price * size + price * qty) / new_size
         # Update position size
         self.positions[symbol]["size"] = new_size
 

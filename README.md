@@ -1,2 +1,2 @@
 # alfa
-A minimalist platform for playing with trading strategies.
+A minimalist platform for running trading strategies.

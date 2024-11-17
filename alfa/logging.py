@@ -7,7 +7,7 @@ log_level_mapping = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,
     "ERROR": logging.ERROR,
-    "CRITICAL": logging.CRITICAL,
+    "CRITICAL": logging.CRITICAL
 }
 
 # Configure logging
@@ -16,5 +16,4 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-def get_logger():
-    return logging
+log = logging

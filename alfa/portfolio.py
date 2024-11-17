@@ -1,5 +1,6 @@
+from alfa.logging import log
 from dynaconf import settings
-from alfa.util import get_logger
+
 
 class Portfolio:
 
@@ -14,7 +15,7 @@ class Portfolio:
 
     def get_position_size(self, symbol):
         symbol = symbol.upper()
-        return 0 if symbol not in self.positions else self.positions[symbol]['size']
+        return 0 if symbol not in self.positions else self.positions[symbol]["size"]
 
     def get_cash_balance(self):
         return self.cash
@@ -22,14 +23,14 @@ class Portfolio:
     def sell(self, symbol, qty, price):
         symbol = symbol.upper()
         if self.get_position_size(symbol) == 0:
-            # get_logger().error(f"Portfolio {self.name} has no position in {symbol}.")
+            log.error(f"Portfolio {self.name} has no position in {symbol}.")
             return False
 
         size = self.positions[symbol]["size"]
 
         if qty > size:
             # Limit to position size
-            get_logger().info(
+            log.info(
                 f"Requested quantity {qty} is capped at {size} {symbol} by {self.name}'s position size."
             )
             qty = size
@@ -45,7 +46,7 @@ class Portfolio:
 
         self.cash += qty * price
 
-        get_logger().info(f"Transaction - SELL {qty} {symbol} @ {price}")
+        log.info(f"Transaction - SELL {qty} {symbol} @ {price}")
 
     def buy(self, symbol, qty, price):
         symbol = symbol.upper()
@@ -69,7 +70,7 @@ class Portfolio:
         # Update position size
         self.positions[symbol]["size"] = new_size
 
-        get_logger().info(f"Transaction - BUY {qty} {symbol} @ {price}")
+        log.info(f"Transaction - BUY {qty} {symbol} @ {price}")
 
     def withdraw(self, amount):
         pass

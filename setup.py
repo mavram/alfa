@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name="alfa",
-    version="0.1.1",
+    version="0.0.1",
     packages=find_packages(),
-    description="A minimalist platform for playing with trading strategies.",
+    description="A minimalist platform for running trading strategies.",
     author="Mircea Avram",
     author_email="mavram@gmail.com",
     python_requires=">=3.12",

@@ -1,4 +1,5 @@
 import logging
+
 from dynaconf import settings
 
 # Map log level to logging module levels

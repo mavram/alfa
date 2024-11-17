@@ -1,4 +1,5 @@
 import pytest
+
 from alfa.portfolio import Portfolio
 
 

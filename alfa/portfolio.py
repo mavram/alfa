@@ -1,5 +1,6 @@
-from alfa.logging import log
 from dynaconf import settings
+
+from alfa.logging import log
 
 
 class Portfolio:

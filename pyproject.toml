@@ -6,30 +6,19 @@ build-backend = "setuptools.build_meta"
 name = "alfa"
 version = "0.0.1"
 description = "A minimalist platform for running trading strategies."
-authors = [
-    { name = "Mircea Avram", email = "mavram@gmail.com" }
-]
-readme = "README.md"  # Specify if you have a README file
+authors = [{ name = "Mircea Avram", email = "mavram@gmail.com" }]
+readme = "README.md" # Specify if you have a README file
 license = { text = "MIT License" }
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License"
+    "License :: OSI Approved :: MIT License",
 ]
 requires-python = ">=3.12"
 
-dependencies = [
-    "dynaconf",
-    "setuptools",
-    "yfinance"
-]
+dependencies = ["dynaconf", "setuptools", "yfinance"]
 
 [project.optional-dependencies]
-development = [
-    "black",
-    "flake8",
-    "pytest",
-    "pytest-cov"
-]
+development = ["black", "flake8", "isort", "pytest", "pytest-cov"]
 
 [tool.setuptools]
 include-package-data = true
@@ -41,3 +30,10 @@ find = { include = ["*"] }
 line-length = 89
 target-version = ["py39"]
 skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 89
+multi_line_output = 3
+include_trailing_comma = true
+skip = ["lib"]

@@ -1,6 +1,5 @@
-import sqlite3
 import os
-
+import sqlite3
 from importlib.resources import files
 
 

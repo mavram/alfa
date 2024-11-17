@@ -1,6 +1,5 @@
 from alfa.portfolio import Portfolio
 
-
 if __name__ == "__main__":
     portfolio = Portfolio()
 

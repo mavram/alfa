@@ -14,7 +14,7 @@ class Portfolio:
 
     def get_position_size(self, symbol):
         symbol = symbol.upper()
-        return 0 if symbol not in self.positions else self.positions[symbol]
+        return 0 if symbol not in self.positions else self.positions[symbol]['size']
 
     def get_cash_balance(self):
         return self.cash
@@ -49,6 +49,9 @@ class Portfolio:
 
     def buy(self, symbol, qty, price):
         symbol = symbol.upper()
+
+        # TODO: check cash balance first
+
         if self.get_position_size(symbol) == 0:
             # Initialize position
             self.positions[symbol] = {"size": 0, "average_price": 0.0}

@@ -7,7 +7,7 @@ name = "alfa"
 version = "0.0.1"
 description = "A minimalist platform for running trading strategies."
 authors = [{ name = "Mircea Avram", email = "mavram@gmail.com" }]
-readme = "README.md" # Specify if you have a README file
+readme = "README.md"
 license = { text = "MIT License" }
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,7 +24,7 @@ development = ["black", "build", "flake8", "isort", "pytest", "pytest-cov"]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["alfa*", "tests*"]
+where = ["", "src"]
 
 [tool.black]
 line-length = 107
@@ -39,7 +39,7 @@ include_trailing_comma = true
 skip = ["bin", "lib"]
 
 [tool.pytest.ini_options]
-addopts = "--verbose"
+addopts = ""
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

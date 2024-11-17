@@ -23,17 +23,24 @@ development = ["black", "flake8", "isort", "pytest", "pytest-cov"]
 [tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.packages]
-find = { include = ["*"] }
+[tool.setuptools.packages.find]
+include = ["alfa*", "tests*"]
 
 [tool.black]
-line-length = 89
+line-length = 107
 target-version = ["py39"]
 skip-string-normalization = false
 
 [tool.isort]
 profile = "black"
-line_length = 89
+line_length = 107
 multi_line_output = 3
 include_trailing_comma = true
 skip = ["lib"]
+
+[tool.pytest.ini_options]
+addopts = "--verbose"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

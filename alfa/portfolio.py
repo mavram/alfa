@@ -17,7 +17,7 @@ class Portfolio:
         symbol = symbol.upper()
         return 0 if symbol not in self.positions else self.positions[symbol]["size"]
 
-    def get_cash_balance(self):
+    def get_cash(self):
         return self.cash
 
     def sell(self, symbol, qty, price):
@@ -44,14 +44,19 @@ class Portfolio:
             # Update position size
             self.positions[symbol]["size"] = size
 
+        # Update cash balance
         self.cash += qty * price
 
-        log.info(f"Transaction - SELL {qty} {symbol} @ {price}")
+        log.info(f"SELL {qty} {symbol} @ {price}")
 
     def buy(self, symbol, qty, price):
         symbol = symbol.upper()
 
-        # TODO: check cash balance first
+        if self.cash < qty * price:
+            log.error(
+                f"Cannot buy {qty} {symbol} at {price}. Portfolio {self.name} has {self.cash} in cash."
+            )
+            return False
 
         if self.get_position_size(symbol) == 0:
             # Initialize position
@@ -70,7 +75,10 @@ class Portfolio:
         # Update position size
         self.positions[symbol]["size"] = new_size
 
-        log.info(f"Transaction - BUY {qty} {symbol} @ {price}")
+        # Update cash balance
+        self.cash -= qty * price
+
+        log.info(f"BUY {qty} {symbol} @ {price}")
 
     def withdraw(self, amount):
         pass
@@ -80,7 +88,8 @@ class Portfolio:
         pass
 
     def deposit(self, amount):
-        pass
+        self.cash += amount
+        log.info(f"DEPOSIT {amount}")
 
     def deposit_stock(self, symbol, qty):
         symbol = symbol.upper()

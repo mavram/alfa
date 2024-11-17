@@ -18,7 +18,7 @@ requires-python = ">=3.12"
 dependencies = ["dynaconf", "setuptools", "yfinance"]
 
 [project.optional-dependencies]
-development = ["black", "flake8", "isort", "pytest", "pytest-cov"]
+development = ["black", "build", "flake8", "isort", "pytest", "pytest-cov"]
 
 [tool.setuptools]
 include-package-data = true

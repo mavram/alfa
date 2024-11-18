@@ -1,11 +1,13 @@
 from alfa.portfolio import Portfolio
 
 if __name__ == "__main__":
-    portfolio = Portfolio()
+    p = Portfolio()
 
-    portfolio.deposit(16000)
-    portfolio.buy("TSLA", 100, 150)
-    portfolio.buy("TSLA", 100, 170)
-    portfolio.sell("TSLA", 50, 180)
-    print(f"cash balance: {portfolio.get_cash()}")
-    portfolio.buy("TSLA", 300, 180)
+    p.deposit(16000)
+    p.buy("TSLA", 100, 150)
+    p.buy("TSLA", 100, 170)
+    p.sell("TSLA", 50, 180)
+    p.buy("TSLA", 300, 180)
+    p.sell("NVDA", 300, 180)
+    p.sell("TSLA", 1000, 200)
+    p.withdraw(100000)

@@ -32,7 +32,7 @@ class Portfolio:
         if qty > size:
             # Limit to position size
             log.info(
-                f"Requested quantity {qty} is capped at {size} {symbol} by {self.name}'s position size."
+                f"Requested quantity {qty} is capped at {size} by {self.name}'s position size in {symbol}."
             )
             qty = size
         # New position size
@@ -80,15 +80,19 @@ class Portfolio:
         log.info(f"BUY {qty} {symbol} @ {price}")
 
     def withdraw(self, amount):
-        pass
-
-    def withdraw_stock(self, symbol, qty):
-        symbol = symbol.upper()
-        pass
+        if amount > self.cash:
+            # Limit to position size
+            log.info(f"Requested amount {amount} is capped at {self.cash} by {self.name}'s cash balance.")
+            amount = self.cash
+        self.cash -= amount
 
     def deposit(self, amount):
         self.cash += amount
         log.info(f"DEPOSIT {amount}")
+
+    def withdraw_stock(self, symbol, qty):
+        symbol = symbol.upper()
+        pass
 
     def deposit_stock(self, symbol, qty):
         symbol = symbol.upper()

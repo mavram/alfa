@@ -12,7 +12,7 @@ class Portfolio:
         self.stocks_to_watch = []
 
     def get_all_positions(self):
-        return self.positions
+        return list(self.positions.keys())
 
     def get_position_size(self, symbol):
         symbol = symbol.upper()
@@ -85,15 +85,30 @@ class Portfolio:
             log.info(f"Requested amount {amount} is capped at {self.cash} by {self.name}'s cash balance.")
             amount = self.cash
         self.cash -= amount
+        log.info(f"WITHDRAW {amount}")
 
     def deposit(self, amount):
         self.cash += amount
         log.info(f"DEPOSIT {amount}")
 
-    def withdraw_stock(self, symbol, qty):
+    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_and_loss):
         symbol = symbol.upper()
-        pass
 
-    def deposit_stock(self, symbol, qty):
-        symbol = symbol.upper()
-        pass
+        if self.get_position_size(symbol) == 0:
+            # Initialize position
+            self.positions[symbol] = {"size": 0, "average_price": 0.0}
+
+        size = self.positions[symbol]["size"]
+        average_price = self.positions[symbol]["average_price"]
+
+        # New position size
+        new_size = size + qty
+
+        # Update position with weighted average price
+        self.positions[symbol]["average_price"] = (
+            average_price * size + cost_basis_per_share * qty
+        ) / new_size
+        # Update position size
+        self.positions[symbol]["size"] = new_size
+
+        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. Gain & Loss: {gain_and_loss}")

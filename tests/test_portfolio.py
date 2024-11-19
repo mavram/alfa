@@ -8,20 +8,20 @@ def p():
     return Portfolio("Test")
 
 
-def test_get_all_positions(p):
-    assert p.get_all_positions() == []
+def test_get_positions(p):
+    assert p.get_positions() == []
 
 
-def test_get_all_positions_with_two_symbols(p):
+def test_get_positions_with_two_symbols(p):
     p.deposit(1000)
     p.buy("AAPL", 2, 100)
     p.buy("TSLA", 3, 100)
 
-    all_positions = p.get_all_positions()
+    positions = p.get_positions()
 
-    assert len(all_positions) == 2
-    assert "AAPL" in all_positions
-    assert "TSLA" in all_positions
+    assert len(positions) == 2
+    assert "AAPL" in positions
+    assert "TSLA" in positions
 
 
 def test_get_position_size_empty(p):
@@ -101,7 +101,7 @@ def test_sell_stock_full_liquidation(p):
     p.deposit(1000)
     p.buy("AAPL", 5, 100)
     p.sell("AAPL", 5, 150)
-    assert "AAPL" not in p.get_all_positions()
+    assert "AAPL" not in p.get_positions()
     assert p.get_cash() == 1000 + (5 * 150) - (5 * 100)
 
 
@@ -109,7 +109,7 @@ def test_sell_stock_full_liquidation_due_to_cap(p):
     p.deposit(1000)
     p.buy("AAPL", 5, 100)
     p.sell("AAPL", 10, 150)
-    assert "AAPL" not in p.get_all_positions()
+    assert "AAPL" not in p.get_positions()
     assert p.get_cash() == 1000 + (5 * 150) - (5 * 100)
 
 
@@ -123,3 +123,38 @@ def test_get_position_size_case_insensitive(p):
 def test_deposit_stock(p):
     p.deposit_stock("AAPL", 10, 120, 23)
     assert p.get_position_size("AAPL") == 10
+
+
+def test_start_watching(p):
+    p.start_watching("AAPL")
+    p.start_watching("GOOG")
+    assert "AAPL" in p.get_stocks_to_watch()
+    assert "GOOG" in p.get_stocks_to_watch()
+    assert len(p.get_stocks_to_watch()) == 2
+
+
+def test_start_watching_duplicate(p):
+    p.start_watching("AAPL")
+    p.start_watching("AAPL")
+    assert p.get_stocks_to_watch() == ["AAPL"]
+    assert len(p.get_stocks_to_watch()) == 1
+
+
+def test_stop_watching(p):
+    p.start_watching("AAPL")
+    p.start_watching("GOOG")
+    p.stop_watching("AAPL")
+    assert "AAPL" not in p.get_stocks_to_watch()
+    assert "GOOG" in p.get_stocks_to_watch()
+    assert len(p.get_stocks_to_watch()) == 1
+
+
+def test_stop_watching_not_in_list(p):
+    p.start_watching("AAPL")
+    p.stop_watching("GOOG")
+    assert "AAPL" in p.get_stocks_to_watch()
+    assert len(p.get_stocks_to_watch()) == 1
+
+
+def test_get_stocks_to_watch_empty(p):
+    assert p.get_stocks_to_watch() == []

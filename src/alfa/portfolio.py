@@ -9,10 +9,13 @@ class Portfolio:
         self.name = name or settings.PORTFOLIO_NAME
         self.cash = 0
         self.positions = {}
-        self.stocks_to_watch = []
+        self.stocks_to_watch = set()
 
-    def get_all_positions(self):
+    def get_positions(self):
         return list(self.positions.keys())
+
+    def get_stocks_to_watch(self):
+        return list(self.stocks_to_watch)
 
     def get_position_size(self, symbol):
         symbol = symbol.upper()
@@ -91,7 +94,7 @@ class Portfolio:
         self.cash += amount
         log.info(f"DEPOSIT {amount}")
 
-    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_and_loss):
+    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_and_loss=None):
         symbol = symbol.upper()
 
         if self.get_position_size(symbol) == 0:
@@ -111,4 +114,11 @@ class Portfolio:
         # Update position size
         self.positions[symbol]["size"] = new_size
 
-        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. Gain & Loss: {gain_and_loss}")
+        gain_and_loss_as_string = f" Gain & Loss: {gain_and_loss}" if gain_and_loss else ""
+        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. {gain_and_loss_as_string}")
+
+    def start_watching(self, symbol):
+        self.stocks_to_watch.add(symbol)
+
+    def stop_watching(self, symbol):
+        self.stocks_to_watch.discard(symbol)

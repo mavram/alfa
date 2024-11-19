@@ -32,11 +32,13 @@ CREATE TABLE IF NOT EXISTS stock_to_watch (
 
 CREATE TABLE IF NOT EXISTS txn (
     id INTEGER PRIMARY KEY,
+    external_id INTEGER NOT NULL UNIQUE,
     portfolio_id INTEGER,
     timestamp NOT NULL,
     stock_id INTEGER,
     quantity NOT NULL,
     price NOT NULL,
+    is_reconcilied BOOLEAN,
     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );

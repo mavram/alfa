@@ -159,7 +159,7 @@ class Portfolio:
         self.cash += amount
         log.info(f"DEPOSIT {amount}")
 
-    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_and_loss=None):
+    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_loss=None):
         """
         Deposits a stock position into the portfolio.
 
@@ -167,7 +167,7 @@ class Portfolio:
             symbol (str): The stock symbol.
             qty (int): The quantity of stock.
             cost_basis_per_share (float): The cost basis per share.
-            gain_and_loss (str, optional): Additional gain/loss information.
+            gain_loss (str, optional): Additional gain/loss information.
         """
         symbol = symbol.upper()
 
@@ -183,8 +183,8 @@ class Portfolio:
         ) / new_size
         self.positions[symbol]["size"] = new_size
 
-        gain_and_loss_as_string = f" Gain & Loss: {gain_and_loss}" if gain_and_loss else ""
-        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. {gain_and_loss_as_string}")
+        gain_loss_as_string = f" Gain/Loss: {gain_loss}" if gain_loss else ""
+        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. {gain_loss_as_string}")
 
     def start_watching(self, symbol):
         """

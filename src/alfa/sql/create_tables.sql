@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS last_processed_batch (
     batch NOT NULL UNIQUE
     );
 
-CREATE TABLE IF NOT EXISTS position (
+CREATE TABLE IF NOT EXISTS end_of_day_position (
     id INTEGER PRIMARY KEY,
     portfolio_id INTEGER,
     stock_id INTEGER,

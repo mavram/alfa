@@ -215,6 +215,8 @@ class Portfolio:
         # g) Respective methods will add an entry to the database for the transaction (not in eod position)
         # h) Once file completed update last processed batch for the location
         # i) Once all files are processed get all stock prices since last price in db
-        # j) Generate eod positions ???
-
+        #        (including symbols from transactions)
+        # j) Update eod positions: if doesn't exist add, if exists update with delta
+        #        (Assume that transactions will not be applied retroactively)
+        # k) ...TODO
         pass

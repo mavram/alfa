@@ -25,6 +25,7 @@ class Portfolio:
                                   settings.PORTFOLIO_NAME is used.
         """
         self.name = name or settings.PORTFOLIO_NAME
+        # TODO: load from db
         self.cash = 0
         self.positions = {}
         self.stocks_to_watch = set()
@@ -203,3 +204,17 @@ class Portfolio:
             symbol (str): The stock symbol.
         """
         self.stocks_to_watch.discard(symbol)
+
+    def process_transactions(location):
+        # a) Get last processed transactions batch. Batch name is epoch.
+        # b) Load all the json files from the location with names more recent than last processed.
+        # c) For each file
+        # d) For each transaction dynamically invoke buy/sell/deposit/deposit_stock/withdraw
+        # e) If stock not in stocks add there first
+        # f) Inserts are idempotent
+        # g) Respective methods will add an entry to the database for the transaction (not in eod position)
+        # h) Once file completed update last processed batch for the location
+        # i) Once all files are processed get all stock prices since last price in db
+        # j) Generate eod positions ???
+
+        pass

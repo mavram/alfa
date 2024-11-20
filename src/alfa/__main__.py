@@ -1,3 +1,5 @@
+from dynaconf import settings
+
 from alfa.portfolio import Portfolio
 
 if __name__ == "__main__":
@@ -14,4 +16,5 @@ if __name__ == "__main__":
 
     # pytest --cov=alfa --cov-report=term-missing
 
+    print(settings.as_dict())
     pass

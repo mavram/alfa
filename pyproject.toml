@@ -15,8 +15,8 @@ classifiers = [
 ]
 keywords = []
 repository = "https://github.com/mavram/alfa"
-packages = [{ include = "src" }, { include = "tests" }]
-include = ["settings.toml"]
+include = ["settings.toml", "tests"]
+
 
 [tool.poetry.dependencies]
 python = "^3.12"

@@ -17,16 +17,16 @@ keywords = []
 repository = "https://github.com/mavram/alfa"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
-dynaconf = "*"
-yfinance = "*"
+python = "^3.12"
+dynaconf = "^3.2.6"
+yfinance = "^0.2.50"
 
-[tool.poetry.dev-dependencies]
-black = "*"
-flake8 = "*"
-isort = "*"
-pytest = "*"
-pytest-cov = "*"
+[tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
+flake8 = "^7.1.1"
+isort = "^5.13.2"
+pytest = "^8.3.3"
+pytest-cov = "^6.0.0"
 
 [tool.black]
 line-length = 107

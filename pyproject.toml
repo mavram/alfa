@@ -32,7 +32,7 @@ pytest-cov = "^6.0.0"
 
 [tool.black]
 line-length = 107
-target-version = ["py39"]
+target-version = ["py312"]
 skip-string-normalization = false
 
 [tool.isort]
@@ -40,10 +40,9 @@ profile = "black"
 line_length = 107
 multi_line_output = 3
 include_trailing_comma = true
-skip = ["bin", "dist", "include", "lib"]
 
 [tool.pytest.ini_options]
-addopts = "--verbose --disable-warnings"
+addopts = "--verbose --disable-warnings --cov=alfa --cov-report=term-missing"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

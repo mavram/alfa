@@ -14,7 +14,5 @@ if __name__ == "__main__":
     # p.deposit_stock("TSLA", 1000, 120)
     # p.withdraw(100000)
 
-    # pytest --cov=alfa --cov-report=term-missing
-
     print(settings.as_dict())
     pass

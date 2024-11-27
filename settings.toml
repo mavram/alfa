@@ -15,3 +15,4 @@ log_level = "INFO"
 
 [global]
 portfolio_name = "alpha"
+db_path = "data/alpha.db"

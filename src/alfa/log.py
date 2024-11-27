@@ -10,11 +10,15 @@ log_level_mapping = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
+logging_level = log_level_mapping[settings.LOG_LEVEL]
 
-# Configure logging
+# Configure Application logging
 logging.basicConfig(
-    level=log_level_mapping[settings.LOG_LEVEL],
+    level=logging_level,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+
+# Configure ORM logging
+logging.getLogger("peewee").setLevel(logging_level)
 
 log = logging

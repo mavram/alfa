@@ -48,3 +48,16 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.coverage.run]
+omit = ["*/tests/*", "*/__init__.py", "*/__main__.py"]
+
+[tool.coverage.report]
+# Exclude specific lines or patterns
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+]
+fail_under = 100

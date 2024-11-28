@@ -85,13 +85,14 @@ db = SqliteDatabase(None)
 
 
 def open_db():
-    path = ":memory:"
     if settings.DB_PATH:
         path = settings.DB_PATH
         log.info(f"Initializing database from {path}")
         create_directories_for_path(path)
-    db.init(path)
-    return db
+        db.init(path)
+        return db
+    log.info("Missing database path.")
+    return None
 
 
 class BaseModel(Model):

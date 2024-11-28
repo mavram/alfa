@@ -1,6 +1,8 @@
+import os
 from datetime import date
 
 import pytest
+from dynaconf import settings
 
 from alfa.db import Price, Stock, open_db
 
@@ -16,6 +18,8 @@ def setup_database():
     yield db  # Provides the initialized database to the test
     db.drop_tables([Stock, Price])
     db.close()
+    # Remove test database
+    os.remove(settings.DB_PATH)
 
 
 def test_add_stock(setup_database):

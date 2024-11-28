@@ -165,20 +165,3 @@ class Price(BaseModel):
     close = FloatField(null=False)
     adjusted_close = FloatField(null=False)
     volume = IntegerField(null=False)
-
-
-# if __name__ == "__main__":
-#     db = init_db()
-#     db.connect()
-#     db.create_tables([Stock, Price])
-
-#     # Add a new stock (if needed)
-#     Stock.add_stock("AAPL", "Apple Inc.")
-#     Stock.add_stock("MSFT", "Microsoft Corporation")
-
-#     # Retrieve all stocks
-#     stocks = Stock.get_stocks()
-#     for stock in stocks:
-#         print(f"Stock Id: {stock.id}, Symbol: {stock.symbol}, Name: {stock.name}")
-
-#     db.close()

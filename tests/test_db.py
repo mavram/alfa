@@ -9,9 +9,6 @@ from alfa.db import Price, Stock, open_db
 
 @pytest.fixture(scope="function")
 def setup_database():
-    """
-    Fixture to initialize and clean up the database for each test.
-    """
     db = open_db()
     db.connect()
     db.create_tables([Stock, Price])
@@ -23,7 +20,6 @@ def setup_database():
 
 
 def test_add_stock(setup_database):
-    """Test adding a stock to the database."""
     stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     assert stock is not None
     assert stock.symbol == "AAPL"
@@ -36,7 +32,6 @@ def test_add_stock(setup_database):
 
 
 def test_add_stock_twice(setup_database):
-    """Test adding a stock to the database twice."""
     stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     assert stock is not None
     assert stock.symbol == "AAPL"
@@ -50,7 +45,6 @@ def test_add_stock_twice(setup_database):
 
 
 def test_get_stocks(setup_database):
-    """Test retrieving all stocks from the database."""
     Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     Stock.add_stock(symbol="MSFT", name="Microsoft Corporation")
 
@@ -61,7 +55,6 @@ def test_get_stocks(setup_database):
 
 
 def test_delete_stock(setup_database):
-    """Test deleting a stock by its symbol."""
     Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     Stock.add_stock(symbol="MSFT", name="Microsoft Corporation")
 
@@ -71,7 +64,6 @@ def test_delete_stock(setup_database):
 
 
 def test_add_price(setup_database):
-    """Test adding a price entry for a stock."""
     stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     price = Price.create(
         stock_id=stock.id,
@@ -90,7 +82,6 @@ def test_add_price(setup_database):
 
 
 # def test_delete_stock_cascades_prices(setup_database):
-#     """Test that deleting a stock cascades to delete associated prices."""
 #     stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
 #     Price.create(
 #         stock_id=stock.id,
@@ -109,5 +100,4 @@ def test_add_price(setup_database):
 
 
 def test_invalid_stock_deletion(setup_database):
-    """Test attempting to delete a stock that doesn't exist."""
     assert Stock.delete_stock("INVALID") is False

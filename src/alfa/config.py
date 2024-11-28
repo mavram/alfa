@@ -1,6 +1,6 @@
 import logging
 
-from dynaconf import Dynaconf, Validator
+from dynaconf import Dynaconf  # , Validator
 
 # Load and validate settings
 settings = Dynaconf(

@@ -158,6 +158,7 @@ class Stock(BaseModel):
 class Price(BaseModel):
     id = IntegerField(primary_key=True)
     stock_id = ForeignKeyField(Stock, backref="prices", on_delete="CASCADE")
+    symbol = TextField(null=False)
     date = DateField(null=False)
     open = FloatField(null=False)
     high = FloatField(null=False)
@@ -165,3 +166,72 @@ class Price(BaseModel):
     close = FloatField(null=False)
     adjusted_close = FloatField(null=False)
     volume = IntegerField(null=False)
+
+    @staticmethod
+    def add_price(symbol, date, open_price, high, low, close, adjusted_close, volume):
+        """
+        Adds a price entry for a given stock symbol.
+
+        :param symbol: The stock symbol (e.g., "AAPL").
+        :param date: The date of the price.
+        :param open_price: The opening price.
+        :param high: The highest price.
+        :param low: The lowest price.
+        :param close: The closing price.
+        :param adjusted_close: The adjusted closing price.
+        :param volume: The volume of the stock traded.
+        :return: The created Price object or None if an error occurred.
+        """
+        try:
+            stock = Stock.get(Stock.symbol == symbol)
+            price = Price.create(
+                stock_id=stock.id,
+                symbol=symbol,
+                date=date,
+                open=open_price,
+                high=high,
+                low=low,
+                close=close,
+                adjusted_close=adjusted_close,
+                volume=volume,
+            )
+            log.debug(f"Price for symbol '{symbol}' on {date} was successfully added.")
+            return price
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error adding price for {symbol}. {e}")
+            return None
+
+    @staticmethod
+    def get_latest_price_by_symbol(symbol):
+        """
+        Gets the most recent date for a given stock symbol.
+
+        :param symbol: The stock symbol (e.g., "AAPL").
+        :return: The most recent date as a DateField object, or None if no data exists.
+        """
+        try:
+            recent_price = Price.select().where(Price.symbol == symbol).order_by(Price.date.desc()).first()
+            return recent_price.date if recent_price else None
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error retrieving most recent date for {symbol}. {e}")
+            return None
+
+    @staticmethod
+    def get_all_symbols_with_most_recent_date():
+        """
+        Gets all stock symbols with their most recent dates.
+
+        :return: A dictionary of {symbol: most_recent_date}.
+        """
+        try:
+            query = (
+                Price.select(Price.symbol, Price.date).distinct().order_by(Price.symbol, Price.date.desc())
+            )
+            result = {}
+            for row in query:
+                if row.symbol not in result or result[row.symbol] < row.date:
+                    result[row.symbol] = row.date
+            return result
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error retrieving stocks with most recent dates. {e}")
+            return {}

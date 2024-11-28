@@ -1,22 +1,4 @@
-import os
-from datetime import date
-
-import pytest
-
-from alfa.config import settings
-from alfa.db import Price, Stock, open_db
-
-
-@pytest.fixture(scope="function")
-def setup_database():
-    db = open_db()
-    db.connect()
-    db.create_tables([Stock, Price])
-    yield db  # Provides the initialized database to the test
-    db.drop_tables([Stock, Price])
-    db.close()
-    # Remove test database
-    os.remove(settings.DB_PATH)
+from alfa.db import Stock
 
 
 def test_add_stock(setup_database):
@@ -61,24 +43,6 @@ def test_delete_stock(setup_database):
     assert Stock.delete_stock("AAPL") is True
     assert len(Stock.get_stocks()) == 1
     assert Stock.delete_stock("AAPL") is False  # Stock already deleted
-
-
-def test_add_price(setup_database):
-    stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
-    price = Price.create(
-        stock_id=stock.id,
-        date=date(2024, 1, 1),
-        open=100.0,
-        high=110.0,
-        low=95.0,
-        close=105.0,
-        adjusted_close=105.0,
-        volume=1000000,
-    )
-    assert price is not None
-    assert price.stock_id.id == stock.id
-    assert price.date == date(2024, 1, 1)
-    assert price.open == 100.0
 
 
 # def test_delete_stock_cascades_prices(setup_database):

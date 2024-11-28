@@ -1,18 +1,14 @@
-[default]
-log_level = "DEBUG"
+[global]
+portfolio_name = "alpha"
 
-[development]
+[dev]
 log_level = "DEBUG"
-
-[staging]
-log_level = "DEBUG"
+db_path = "data/dev-alpha.db"
 
 [testing]
 log_level = "WARNING"
+db_path = "data/test-alpha.db"
 
-[production]
+[prod]
 log_level = "INFO"
-
-[global]
-portfolio_name = "alpha"
 db_path = "data/alpha.db"

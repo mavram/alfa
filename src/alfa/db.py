@@ -1,41 +1,97 @@
-import os
+# CREATE TABLE IF NOT EXISTS stock (
+#     id INTEGER PRIMARY KEY,
+#     symbol TEXT NOT NULL UNIQUE,
+#     name TEXT NOT NULL
+#     );
+
+# CREATE TABLE IF NOT EXISTS price (
+#     id INTEGER PRIMARY KEY,
+#     stock_id INTEGER,
+#     date NOT NULL,
+#     open NOT NULL,
+#     high NOT NULL,
+#     low NOT NULL,
+#     close NOT NULL,
+#     adjusted_close NOT NULL,
+#     volume NOT NULL,
+#     FOREIGN KEY (stock_id) REFERENCES stock (id)
+#     );
+
+# CREATE TABLE IF NOT EXISTS portfolio (
+#     id INTEGER PRIMARY KEY,
+#     name TEXT NOT NULL UNIQUE,
+#     currency TEXT NOT NULL UNIQUE
+#     );
+
+# CREATE TABLE IF NOT EXISTS stock_to_watch (
+#     id INTEGER PRIMARY KEY,
+#     stock_id INTEGER,
+#     symbol TEXT NOT NULL UNIQUE,
+#     portfolio_id INTEGER,
+#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+#     FOREIGN KEY (stock_id) REFERENCES stock (id)
+#     );
+
+# CREATE TABLE IF NOT EXISTS transaction_ledger (
+#     id INTEGER PRIMARY KEY,
+#     external_id INTEGER NOT NULL UNIQUE,
+#     portfolio_id INTEGER,
+#     timestamp INTEGER NOT NULL,
+#     stock_id INTEGER,
+#     quantity NOT NULL,
+#     price NOT NULL,
+#     type NOT NULL, -- BUY, SELL, DEPOSIT_STOCK
+#     fees NOT NULL,
+#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+#     FOREIGN KEY (stock_id) REFERENCES stock (id)
+#     );
+
+# CREATE TABLE IF NOT EXISTS cash_ledger (
+#     id INTEGER PRIMARY KEY,
+#     external_id INTEGER NOT NULL UNIQUE,
+#     portfolio_id INTEGER,
+#     timestamp INTEGER NOT NULL,
+#     amount NOT NULL,
+#     type NOT NULL, -- DEPOSIT / WITHDRAW
+#     balance NOT NULL,
+#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id)
+#     );
+
+# CREATE TABLE IF NOT EXISTS last_processed_batch (
+#     location TEXT PRIMARY KEY,
+#     batch NOT NULL UNIQUE
+#     );
+
+# CREATE TABLE IF NOT EXISTS end_of_day_position (
+#     id INTEGER PRIMARY KEY,
+#     portfolio_id INTEGER,
+#     stock_id INTEGER,
+#     symbol TEXT NOT NULL UNIQUE,
+#     date NOT NULL,
+#     size NOT NULL,
+#     average_price NOT NULL,
+#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+#     FOREIGN KEY (stock_id) REFERENCES stock (id)
+#     );
+
 
 from dynaconf import settings
 from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.log import log
+from alfa.util import create_directories_for_path
+
+db = SqliteDatabase(None)
 
 
-def create_directories_for_dbpath(dbpath):
-    """
-    Create all missing directories in the given path, assuming it ends with a file name.
-
-    :param path: The file path for which directories need to be created.
-    """
-    try:
-        # Extract the directory portion of the path
-        directory = os.path.dirname(dbpath)
-
-        # Create directories if they are missing
-        if directory:  # Avoid creating root directory if path is just a file name
-            os.makedirs(directory, exist_ok=True)
-        return True
-    except Exception as e:
-        log.error(f"Error creating directories: {e}")
-        return False
-
-
-class Database:
-    @staticmethod
-    def get_database(dbpath):
-        if create_directories_for_dbpath(dbpath):
-            db = SqliteDatabase(dbpath)
-            log.info(f"Database '{dbpath}' was opened.")
-            return db
-        return None
-
-
-db = Database.get_database(settings.DB_PATH or f"{settings.PORTFOLIO_NAME}.db")
+def open_db():
+    path = ":memory:"
+    if settings.DB_PATH:
+        path = settings.DB_PATH
+        log.info(f"Initializing database from {path}")
+        create_directories_for_path(path)
+    db.init(path)
+    return db
 
 
 class BaseModel(Model):
@@ -77,7 +133,7 @@ class Stock(BaseModel):
             stocks = list(Stock.select())
             log.debug(f"Found {len(stocks)} stocks.")
             return stocks
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Error retrieving stocks. {e}")
             return []
 
@@ -98,7 +154,7 @@ class Stock(BaseModel):
             else:
                 log.warning(f"Stock with symbol '{symbol}' not found.")
                 return False
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Error deleting stock {symbol}. {e}")
             return False
 
@@ -116,17 +172,21 @@ class Price(BaseModel):
 
 
 # Example usage
-if __name__ == "__main__":
-    db.connect()
-    db.create_tables([Stock, Price])
+# if __name__ == "__main__":
 
-    # Add a new stock (if needed)
-    Stock.add_stock("AAPL", "Apple Inc.")
-    Stock.add_stock("MSFT", "Microsoft Corporation")
+#     print(settings.as_dict())
 
-    # Retrieve all stocks
-    stocks = Stock.get_stocks()
-    for stock in stocks:
-        print(f"Stock Id: {stock.id}, Symbol: {stock.symbol}, Name: {stock.name}")
+#     db = init_db()
+#     db.connect()
+#     db.create_tables([Stock, Price])
 
-    db.close()
+#     # Add a new stock (if needed)
+#     Stock.add_stock("AAPL", "Apple Inc.")
+#     Stock.add_stock("MSFT", "Microsoft Corporation")
+
+#     # Retrieve all stocks
+#     stocks = Stock.get_stocks()
+#     for stock in stocks:
+#         print(f"Stock Id: {stock.id}, Symbol: {stock.symbol}, Name: {stock.name}")
+
+#     db.close()

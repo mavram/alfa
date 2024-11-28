@@ -2,8 +2,8 @@ import os
 from datetime import date
 
 import pytest
-from dynaconf import settings
 
+from alfa.config import settings
 from alfa.db import Price, Stock, open_db
 
 

@@ -1,6 +1,12 @@
 import logging
 
-from dynaconf import settings
+from dynaconf import Dynaconf
+
+settings = Dynaconf(
+    environments=True,
+    settings_files=["settings.toml", ".secrets.toml"],
+    envvar_prefix="ALFA",
+)
 
 # Map log level to logging module levels
 log_level_mapping = {

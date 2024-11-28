@@ -74,25 +74,20 @@
 #     FOREIGN KEY (stock_id) REFERENCES stock (id)
 #     );
 
-
-from dynaconf import settings
 from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
-from alfa.log import log
+from alfa.config import log, settings
 from alfa.util import create_directories_for_path
 
 db = SqliteDatabase(None)
 
 
 def open_db():
-    if settings.DB_PATH:
-        path = settings.DB_PATH
-        log.info(f"Initializing database from {path}")
-        create_directories_for_path(path)
-        db.init(path)
-        return db
-    log.info("Missing database path.")
-    return None
+    path = settings.DB_PATH
+    log.info(f"Initializing database from {path}")
+    create_directories_for_path(path)
+    db.init(path)
+    return db
 
 
 class BaseModel(Model):
@@ -172,11 +167,7 @@ class Price(BaseModel):
     volume = IntegerField(null=False)
 
 
-# Example usage
 # if __name__ == "__main__":
-
-#     print(settings.as_dict())
-
 #     db = init_db()
 #     db.connect()
 #     db.create_tables([Stock, Price])

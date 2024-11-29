@@ -168,13 +168,13 @@ class Price(BaseModel):
     volume = IntegerField(null=False)
 
     @staticmethod
-    def add_price(symbol, date, open_price, high, low, close, adjusted_close, volume):
+    def add_price(symbol, date, open, high, low, close, adjusted_close, volume):
         """
         Adds a price entry for a given stock symbol.
 
         :param symbol: The stock symbol (e.g., "AAPL").
         :param date: The date of the price.
-        :param open_price: The opening price.
+        :param open: The opening price.
         :param high: The highest price.
         :param low: The lowest price.
         :param close: The closing price.
@@ -188,7 +188,7 @@ class Price(BaseModel):
                 stock_id=stock.id,
                 symbol=symbol,
                 date=date,
-                open=open_price,
+                open=open,
                 high=high,
                 low=low,
                 close=close,
@@ -202,7 +202,22 @@ class Price(BaseModel):
             return None
 
     @staticmethod
-    def get_latest_price_by_symbol(symbol):
+    def get_prices_by_symbol(symbol):
+        """
+        Retrieve all prices for a given symbol from oldest to newest.
+
+        :return: A list of Price objects.
+        """
+        try:
+            prices = list(Price.select().where(Price.symbol == symbol).order_by(Price.date.asc()))
+            log.debug(f"Found {len(prices)} prices for {symbol}.")
+            return prices
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error retrieving prices. {e}")
+            return []
+
+    @staticmethod
+    def get_latest_date_by_symbol(symbol):
         """
         Gets the most recent date for a given stock symbol.
 
@@ -217,7 +232,7 @@ class Price(BaseModel):
             return None
 
     @staticmethod
-    def get_all_symbols_with_most_recent_date():
+    def get_all_symbols_with_latest_date():
         """
         Gets all stock symbols with their most recent dates.
 

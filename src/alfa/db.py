@@ -92,7 +92,7 @@ db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 def open_db():
     path = settings.DB_PATH
-    log.info(f"Initializing database from {path}")
+    log.info(f"Initializing database {path}")
     create_directories_for_path(path)
     db.init(path)
     return db
@@ -142,21 +142,6 @@ class Stock(BaseModel):
             return []
 
     @staticmethod
-    def get_symbols():
-        """
-        Retrieve all symbols from the database.
-
-        :return: A list of symbols.
-        """
-        try:
-            symbols = list(Stock.select(Stock.symbol))
-            log.debug(f"Found {len(symbols)} symbols.")
-            return symbols
-        except Exception as e:  # pragma: no cover
-            log.error(f"Error retrieving symbols. {e}")
-            return
-
-    @staticmethod
     def delete_stock(symbol):
         """
         Delete a stock by its symbol.
@@ -179,7 +164,39 @@ class Stock(BaseModel):
 
     def get_most_recent_price(self):
         price = self.prices.order_by(Price.timestamp.desc()).first()
-        return price.timestamp
+        log.debug(f"{self.symbol}'s most recent price is from {price.timestamp}.")
+        return price
+
+    def add_price(self, timestamp, open, high, low, close, adjusted_close, volume):
+        """
+        Adds a price entry for this stock.
+
+        :param timestamp: The timestamp of the price.
+        :param open: The opening price.
+        :param high: The highest price.
+        :param low: The lowest price.
+        :param close: The closing price.
+        :param adjusted_close: The adjusted closing price.
+        :param volume: The volume of the stock traded.
+        :return: The created Price object or None if an error occurred.
+        """
+        try:
+            price = Price.create(
+                stock_id=self.id,
+                symbol=self.symbol,
+                timestamp=timestamp,
+                open=open,
+                high=high,
+                low=low,
+                close=close,
+                adjusted_close=adjusted_close,
+                volume=volume,
+            )
+            log.debug(f"Price for symbol '{self.symbol}' on {timestamp} was successfully added.")
+            return price
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error adding price for {self.symbol}. {e}")
+            return None
 
 
 class Price(BaseModel):
@@ -193,37 +210,3 @@ class Price(BaseModel):
     close = FloatField(null=False)
     adjusted_close = FloatField(null=False)
     volume = IntegerField(null=False)
-
-    @staticmethod
-    def add_price(symbol, timestamp, open, high, low, close, adjusted_close, volume):
-        """
-        Adds a price entry for a given stock symbol.
-
-        :param symbol: The stock symbol (e.g., "AAPL").
-        :param timestamp: The timestamp of the price.
-        :param open: The opening price.
-        :param high: The highest price.
-        :param low: The lowest price.
-        :param close: The closing price.
-        :param adjusted_close: The adjusted closing price.
-        :param volume: The volume of the stock traded.
-        :return: The created Price object or None if an error occurred.
-        """
-        try:
-            stock = Stock.get(Stock.symbol == symbol)
-            price = Price.create(
-                stock_id=stock.id,
-                symbol=symbol,
-                timestamp=timestamp,
-                open=open,
-                high=high,
-                low=low,
-                close=close,
-                adjusted_close=adjusted_close,
-                volume=volume,
-            )
-            log.debug(f"Price for symbol '{symbol}' on {timestamp} was successfully added.")
-            return price
-        except Exception as e:  # pragma: no cover
-            log.error(f"Error adding price for {symbol}. {e}")
-            return None

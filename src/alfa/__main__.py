@@ -3,6 +3,17 @@ from datetime import datetime
 from alfa.db import Price, Stock, open_db
 from alfa.portfolio import Portfolio
 
+
+def display_stocks(stocks):
+    for stock in stocks:
+        prices = stock.prices
+        for idx, price in enumerate(prices):
+            print(
+                f"Price{idx}: Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}"
+            )
+        print(f"Most recent price is {stock.get_most_recent_price().timestamp}")
+
+
 if __name__ == "__main__":
     p = Portfolio()
     p.deposit(16000)
@@ -19,12 +30,15 @@ if __name__ == "__main__":
     db.connect()
     db.create_tables([Stock, Price])
 
-    # Add a new stock (if needed)
-    symbols = Stock.get_symbols()
-    if "AAPL" not in symbols:
+    # Add a new stock (if needed) and some prices
+    stock = Stock.get_or_none(Stock.symbol == "AAPL")
+    if not stock:
         stock = Stock.add_stock("AAPL", "Apple Inc.")
-    Price.add_price(
-        symbol="AAPL",
+
+    if not stock:
+        exit()
+
+    stock.add_price(
         timestamp=datetime.now(),
         open=152.0,
         high=157.0,
@@ -34,24 +48,10 @@ if __name__ == "__main__":
         volume=1100000,
     )
 
-    stocks = Stock.get_stocks()
-    print(f"Found {len(stocks)} stocks")
-    for stock in stocks:
-        prices = stock.prices
-        print(f"Found {len(prices)} prices")
-        for price in prices:
-            print(f"Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}")
-        print(f"Most recent price is {stock.get_most_recent_price()}")
-
+    print(f"{stock.symbol} has {len(stock.prices)} prices")
+    display_stocks(Stock.get_stocks())
     stock_is_deleted = Stock.delete_stock("AAPL")
     assert stock_is_deleted
-
-    stocks = Stock.get_stocks()
-    print(f"Found {len(stocks)} stocks")
-    for stock in stocks:
-        prices = stock.prices
-        print(f"Found {len(prices)} prices")
-        for price in prices:
-            print(f"Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}")
+    display_stocks(Stock.get_stocks())
 
     db.close()

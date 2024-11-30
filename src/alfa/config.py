@@ -39,6 +39,8 @@ logging.basicConfig(
 )
 
 # Configure ORM logging
-logging.getLogger("peewee").setLevel(logging_level)
+# logging.getLogger("peewee").setLevel(logging_level)
+logging.getLogger("peewee").disabled = True
+
 
 log = logging

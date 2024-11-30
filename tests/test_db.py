@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from alfa.db import Price, Stock
+from alfa.db import Stock
 
 
 def test_add_stock(setup_database):
@@ -23,15 +23,6 @@ def test_get_stocks(setup_database):
     assert stocks[1].symbol == "MSFT"
 
 
-def test_get_symbols(setup_database):
-    Stock.add_stock(symbol="AAPL", name="Apple Inc.")
-    Stock.add_stock(symbol="MSFT", name="Microsoft Corp.")
-    symbols = Stock.get_symbols()
-    assert len(symbols) == 2
-    assert symbols[0].symbol == "AAPL"
-    assert symbols[1].symbol == "MSFT"
-
-
 def test_delete_stock(setup_database):
     Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     assert Stock.delete_stock("AAPL") is True
@@ -40,10 +31,9 @@ def test_delete_stock(setup_database):
 
 
 def test_add_price(setup_database):
-    Stock.add_stock(symbol="AAPL", name="Apple Inc.")
+    stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     timestamp = datetime(2024, 11, 29, 12, 0, 0)
-    price = Price.add_price(
-        symbol="AAPL",
+    price = stock.add_price(
         timestamp=timestamp,
         open=200.0,
         high=210.0,
@@ -56,14 +46,14 @@ def test_add_price(setup_database):
     assert price.symbol == "AAPL"
     assert price.timestamp == timestamp
     assert price.close == 205.0
+    assert len(stock.prices) == 1
 
 
 def test_get_most_recent_price(setup_database):
     stock = Stock.add_stock(symbol="AAPL", name="Apple Inc.")
     timestamp1 = datetime(2024, 11, 28, 12, 0, 0)
     timestamp2 = datetime(2024, 11, 29, 12, 0, 0)
-    Price.add_price(
-        symbol="AAPL",
+    stock.add_price(
         timestamp=timestamp1,
         open=190.0,
         high=200.0,
@@ -72,8 +62,7 @@ def test_get_most_recent_price(setup_database):
         adjusted_close=194.5,
         volume=800000,
     )
-    Price.add_price(
-        symbol="AAPL",
+    stock.add_price(
         timestamp=timestamp2,
         open=200.0,
         high=210.0,
@@ -83,7 +72,7 @@ def test_get_most_recent_price(setup_database):
         volume=1000000,
     )
     recent_price = stock.get_most_recent_price()
-    assert recent_price == timestamp2
+    assert recent_price.timestamp == timestamp2
 
 
 def test_delete_nonexistent_stock(setup_database):

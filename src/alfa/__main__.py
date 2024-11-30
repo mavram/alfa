@@ -1,43 +1,45 @@
 from datetime import datetime
 
-from alfa.db import Price, Stock, open_db
-from alfa.portfolio import Portfolio
-
-
-def display_stocks(stocks):
-    for stock in stocks:
-        prices = stock.prices
-        for idx, price in enumerate(prices):
-            print(
-                f"Price{idx}: Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}"
-            )
-        print(f"Most recent price is {stock.get_most_recent_price().timestamp}")
-
+from alfa.db import BaseModel, Portfolio, Stock, open_db
 
 if __name__ == "__main__":
-    p = Portfolio()
-    p.deposit(16000)
-    p.buy("TSLA", 100, 150)
-    p.buy("TSLA", 100, 170)
-    p.sell("TSLA", 50, 180)
-    p.buy("TSLA", 300, 180)
-    p.sell("NVDA", 300, 180)
-    p.sell("TSLA", 1000, 200)
-    p.deposit_stock("TSLA", 1000, 120)
-    p.withdraw(100000)
+
+    def display_stocks(stocks):
+        for stock in stocks:
+            prices = stock.prices
+            for idx, price in enumerate(prices):
+                print(
+                    f"Price {idx}: Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}"
+                )
+
+            most_recent_price = stock.get_most_recent_price()
+            if most_recent_price:
+                print(f"Most recent price is {most_recent_price.timestamp}")
 
     db = open_db()
     db.connect()
-    db.create_tables([Stock, Price])
+    db.create_tables(BaseModel.get_models())
 
     # Add a new stock (if needed) and some prices
-    stock = Stock.get_or_none(Stock.symbol == "AAPL")
-    if not stock:
-        stock = Stock.add_stock("AAPL", "Apple Inc.")
+    p = Portfolio.get_or_none(Portfolio.name == "Theta")
+    if not p:
+        p = Portfolio.add_portfolio("Theta")
 
-    if not stock:
+    if not p:
         exit()
 
+    portfolios = Portfolio.get_portfolios()
+    for p in portfolios:
+        print(f"{p.name} uses {p.get_currency()}")
+
+    p = portfolios[0]
+
+    p.start_watching("AAPL", "Apple Inc.")
+    p.start_watching("TSLA")
+
+    print(f"{p.name} watches {len(p.watchlist)} stocks.")
+
+    stock = Stock.get(Stock.symbol == "AAPL")
     stock.add_price(
         timestamp=datetime.now(),
         open=152.0,
@@ -49,9 +51,6 @@ if __name__ == "__main__":
     )
 
     print(f"{stock.symbol} has {len(stock.prices)} prices")
-    display_stocks(Stock.get_stocks())
-    stock_is_deleted = Stock.delete_stock("AAPL")
-    assert stock_is_deleted
-    display_stocks(Stock.get_stocks())
+    # display_stocks(p.watchlist)
 
     db.close()

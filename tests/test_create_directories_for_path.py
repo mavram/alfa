@@ -17,9 +17,7 @@ def test_no_action_for_file_only_path():
     path = "file.txt"  # No directory specified
     create_directories_for_path(path)
     # Ensure no directories are created
-    assert not os.path.exists(
-        os.path.dirname(path)
-    ), "No directories should be created for a file-only path."
+    assert not os.path.exists(os.path.dirname(path)), "No directories should be created for a file-only path."
 
 
 def test_permission_error():

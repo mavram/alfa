@@ -88,9 +88,7 @@ class Portfolio:
         size = self.positions[symbol]["size"]
 
         if qty > size:
-            log.info(
-                f"Requested quantity {qty} is capped at {size} by {self.name}'s position size in {symbol}."
-            )
+            log.info(f"Requested quantity {qty} is capped at {size} by {self.name}'s position size in {symbol}.")
             qty = size
 
         size -= qty
@@ -118,9 +116,7 @@ class Portfolio:
         symbol = symbol.upper()
 
         if self.cash < qty * price:
-            log.error(
-                f"Cannot buy {qty} {symbol} at {price}. Portfolio {self.name} has {self.cash} in cash."
-            )
+            log.error(f"Cannot buy {qty} {symbol} at {price}. Portfolio {self.name} has {self.cash} in cash.")
             return False
 
         if self.get_position_size(symbol) == 0:
@@ -177,9 +173,7 @@ class Portfolio:
         average_price = self.positions[symbol]["average_price"]
 
         new_size = size + qty
-        self.positions[symbol]["average_price"] = (
-            average_price * size + cost_basis_per_share * qty
-        ) / new_size
+        self.positions[symbol]["average_price"] = (average_price * size + cost_basis_per_share * qty) / new_size
         self.positions[symbol]["size"] = new_size
 
         gain_loss_as_string = f" Gain/Loss: {gain_loss}" if gain_loss else ""

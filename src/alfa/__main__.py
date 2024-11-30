@@ -20,11 +20,13 @@ if __name__ == "__main__":
     db.create_tables([Stock, Price])
 
     # Add a new stock (if needed)
-    stock = Stock.add_stock("AAPL", "Apple Inc.")
+    symbols = Stock.get_symbols()
+    if "AAPL" not in symbols:
+        stock = Stock.add_stock("AAPL", "Apple Inc.")
     Price.add_price(
-        symbol=stock.symbol,
-        date=datetime(2024, 11, 28),
-        open_price=152.0,
+        symbol="AAPL",
+        timestamp=datetime.now(),
+        open=152.0,
         high=157.0,
         low=150.0,
         close=156.0,
@@ -32,19 +34,24 @@ if __name__ == "__main__":
         volume=1100000,
     )
 
-    prices = Price.get_prices_by_symbol(stock.symbol)
-    for price in prices:
-        print(f"Date {price.date}, Stock {price.symbol}, Price: {price.adjusted_close}")
+    stocks = Stock.get_stocks()
+    print(f"Found {len(stocks)} stocks")
+    for stock in stocks:
+        prices = stock.prices
+        print(f"Found {len(prices)} prices")
+        for price in prices:
+            print(f"Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}")
+        print(f"Most recent price is {stock.get_most_recent_price()}")
 
     stock_is_deleted = Stock.delete_stock("AAPL")
     assert stock_is_deleted
 
-    prices = Price.get_prices_by_symbol(stock.symbol)
-    for price in prices:
-        print(f"Date {price.date}, Stock {price.symbol}, Price: {price.adjusted_close}")
-
     stocks = Stock.get_stocks()
+    print(f"Found {len(stocks)} stocks")
     for stock in stocks:
-        print(f"Stock Id: {stock.id}, Symbol: {stock.symbol}, Name: {stock.name}")
+        prices = stock.prices
+        print(f"Found {len(prices)} prices")
+        for price in prices:
+            print(f"Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}")
 
     db.close()

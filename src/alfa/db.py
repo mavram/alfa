@@ -74,12 +74,20 @@
 #     FOREIGN KEY (stock_id) REFERENCES stock (id)
 #     );
 
-from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+from peewee import (
+    DateTimeField,
+    FloatField,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    SqliteDatabase,
+    TextField,
+)
 
 from alfa.config import log, settings
 from alfa.util import create_directories_for_path
 
-db = SqliteDatabase(None)
+db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
 def open_db():
@@ -114,7 +122,7 @@ class Stock(BaseModel):
             stock = Stock.create(symbol=symbol, name=name)
             log.debug(f"Stock with symbol '{symbol}' was successfully added.")
             return stock
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Error adding {symbol}. {e}")
             return None
 
@@ -132,6 +140,21 @@ class Stock(BaseModel):
         except Exception as e:  # pragma: no cover
             log.error(f"Error retrieving stocks. {e}")
             return []
+
+    @staticmethod
+    def get_symbols():
+        """
+        Retrieve all symbols from the database.
+
+        :return: A list of symbols.
+        """
+        try:
+            symbols = list(Stock.select(Stock.symbol))
+            log.debug(f"Found {len(symbols)} symbols.")
+            return symbols
+        except Exception as e:  # pragma: no cover
+            log.error(f"Error retrieving symbols. {e}")
+            return
 
     @staticmethod
     def delete_stock(symbol):
@@ -154,12 +177,16 @@ class Stock(BaseModel):
             log.error(f"Error deleting stock {symbol}. {e}")
             return False
 
+    def get_most_recent_price(self):
+        price = self.prices.order_by(Price.timestamp.desc()).first()
+        return price.timestamp
+
 
 class Price(BaseModel):
     id = IntegerField(primary_key=True)
     stock_id = ForeignKeyField(Stock, backref="prices", on_delete="CASCADE")
     symbol = TextField(null=False)
-    date = DateField(null=False)
+    timestamp = DateTimeField(null=False)
     open = FloatField(null=False)
     high = FloatField(null=False)
     low = FloatField(null=False)
@@ -168,12 +195,12 @@ class Price(BaseModel):
     volume = IntegerField(null=False)
 
     @staticmethod
-    def add_price(symbol, date, open, high, low, close, adjusted_close, volume):
+    def add_price(symbol, timestamp, open, high, low, close, adjusted_close, volume):
         """
         Adds a price entry for a given stock symbol.
 
         :param symbol: The stock symbol (e.g., "AAPL").
-        :param date: The date of the price.
+        :param timestamp: The timestamp of the price.
         :param open: The opening price.
         :param high: The highest price.
         :param low: The lowest price.
@@ -187,7 +214,7 @@ class Price(BaseModel):
             price = Price.create(
                 stock_id=stock.id,
                 symbol=symbol,
-                date=date,
+                timestamp=timestamp,
                 open=open,
                 high=high,
                 low=low,
@@ -195,58 +222,8 @@ class Price(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(f"Price for symbol '{symbol}' on {date} was successfully added.")
+            log.debug(f"Price for symbol '{symbol}' on {timestamp} was successfully added.")
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Error adding price for {symbol}. {e}")
             return None
-
-    @staticmethod
-    def get_prices_by_symbol(symbol):
-        """
-        Retrieve all prices for a given symbol from oldest to newest.
-
-        :return: A list of Price objects.
-        """
-        try:
-            prices = list(Price.select().where(Price.symbol == symbol).order_by(Price.date.asc()))
-            log.debug(f"Found {len(prices)} prices for {symbol}.")
-            return prices
-        except Exception as e:  # pragma: no cover
-            log.error(f"Error retrieving prices. {e}")
-            return []
-
-    @staticmethod
-    def get_latest_date_by_symbol(symbol):
-        """
-        Gets the most recent date for a given stock symbol.
-
-        :param symbol: The stock symbol (e.g., "AAPL").
-        :return: The most recent date as a DateField object, or None if no data exists.
-        """
-        try:
-            recent_price = Price.select().where(Price.symbol == symbol).order_by(Price.date.desc()).first()
-            return recent_price.date if recent_price else None
-        except Exception as e:  # pragma: no cover
-            log.error(f"Error retrieving most recent date for {symbol}. {e}")
-            return None
-
-    @staticmethod
-    def get_all_symbols_with_latest_date():
-        """
-        Gets all stock symbols with their most recent dates.
-
-        :return: A dictionary of {symbol: most_recent_date}.
-        """
-        try:
-            query = (
-                Price.select(Price.symbol, Price.date).distinct().order_by(Price.symbol, Price.date.desc())
-            )
-            result = {}
-            for row in query:
-                if row.symbol not in result or result[row.symbol] < row.date:
-                    result[row.symbol] = row.date
-            return result
-        except Exception as e:  # pragma: no cover
-            log.error(f"Error retrieving stocks with most recent dates. {e}")
-            return {}

@@ -164,7 +164,7 @@ class Currency(Enum):
 class Portfolio(BaseModel):
     id = IntegerField(primary_key=True)
     name = TextField(unique=True, null=False)
-    currency = TextField(unique=True, null=False)
+    currency = TextField(null=False)
 
     @staticmethod
     def add_portfolio(name, currency=Currency.USD):
@@ -264,12 +264,21 @@ class Portfolio(BaseModel):
             log.error(f"Failed to stop watching {symbol} for portfolio {self.name}. {e}")
             return False
 
+    def get_watchlist(self):
+        """
+        Retrieves all stocks being watched for this portfolio.
+
+        :return: A list of Stock objects associated with this portfolio.
+        :rtype: list[Stock]
+        """
+        return Stock.select().join(StockToWatch).where(StockToWatch.portfolio_id == self.id)
+
 
 class StockToWatch(BaseModel):
     id = IntegerField(primary_key=True)
     stock_id = ForeignKeyField(Stock, null=False)
     symbol = TextField(unique=False, null=False)
-    portfolio_id = ForeignKeyField(Portfolio, backref="watchlist", on_delete="CASCADE")
+    portfolio_id = ForeignKeyField(Portfolio, on_delete="CASCADE")
 
     class Meta:
         table_name = "stock_to_watch"

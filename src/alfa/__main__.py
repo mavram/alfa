@@ -37,7 +37,7 @@ if __name__ == "__main__":
     p.start_watching("AAPL", "Apple Inc.")
     p.start_watching("TSLA")
 
-    print(f"{p.name} watches {len(p.watchlist)} stocks.")
+    print(f"{p.name} watches {len(p.get_watchlist())} stocks.")
 
     stock = Stock.get(Stock.symbol == "AAPL")
     stock.add_price(
@@ -51,6 +51,6 @@ if __name__ == "__main__":
     )
 
     print(f"{stock.symbol} has {len(stock.prices)} prices")
-    # display_stocks(p.watchlist)
+    display_stocks(p.get_watchlist())
 
     db.close()

@@ -379,7 +379,7 @@ class StockToWatch(BaseModel):
 
 class CashLedger(BaseModel):
     id = IntegerField(primary_key=True)
-    external_id = IntegerField(unique=True)
+    external_id = TextField(unique=True)
     portfolio = ForeignKeyField(Portfolio, field="id", backref="cash_ledger")
     timestamp = IntegerField()
     amount = FloatField()
@@ -387,3 +387,94 @@ class CashLedger(BaseModel):
 
     class Meta:
         table_name = "cash_ledger"
+
+
+"""
+class OldPortfolio:
+    def get_positions(self):
+        return list(self.positions.keys())
+
+    def get_position_size(self, symbol):
+        symbol = symbol.upper()
+        return 0 if symbol not in self.positions else self.positions[symbol]["size"]
+
+    def sell(self, symbol, qty, price):
+        symbol = symbol.upper()
+        if self.get_position_size(symbol) == 0:
+            log.error(f"Portfolio {self.name} has no position in {symbol}.")
+            return False
+
+        size = self.positions[symbol]["size"]
+
+        if qty > size:
+            log.info(
+                f"Requested quantity {qty} is capped at {size} by {self.name}'s position size in {symbol}."
+            )
+            qty = size
+
+        size -= qty
+
+        if size == 0:
+            self.positions.pop(symbol)
+        else:
+            self.positions[symbol]["size"] = size
+
+        self.cash += qty * price
+        log.info(f"SELL {qty} {symbol} @ {price}")
+
+    def buy(self, symbol, qty, price):
+        symbol = symbol.upper()
+
+        if self.cash < qty * price:
+            log.error(
+                f"Cannot buy {qty} {symbol} at {price}. Portfolio {self.name} has {self.cash} in cash."
+            )
+            return False
+
+        if self.get_position_size(symbol) == 0:
+            self.positions[symbol] = {"size": 0, "average_price": 0.0}
+
+        size = self.positions[symbol]["size"]
+        average_price = self.positions[symbol]["average_price"]
+
+        new_size = size + qty
+        self.positions[symbol]["average_price"] = (average_price * size + price * qty) / new_size
+        self.positions[symbol]["size"] = new_size
+        self.cash -= qty * price
+        log.info(f"BUY {qty} {symbol} @ {price}")
+
+    def deposit_stock(self, symbol, qty, cost_basis_per_share, gain_loss=None):
+        symbol = symbol.upper()
+
+        if self.get_position_size(symbol) == 0:
+            self.positions[symbol] = {"size": 0, "average_price": 0.0}
+
+        size = self.positions[symbol]["size"]
+        average_price = self.positions[symbol]["average_price"]
+
+        new_size = size + qty
+        self.positions[symbol]["average_price"] = (
+            average_price * size + cost_basis_per_share * qty
+        ) / new_size
+        self.positions[symbol]["size"] = new_size
+
+        gain_loss_as_string = f" Gain/Loss: {gain_loss}" if gain_loss else ""
+        log.info(f"DEPOSIT_STOCK {qty} {symbol} @ {cost_basis_per_share}. {gain_loss_as_string}")
+
+    def process_transactions(location):
+        # a) Get last processed transactions batch. Batch name is epoch.
+        # b) Load all the json files from the location with names more recent than last processed.
+        # c) For each file
+        # d) For each transaction dynamically invoke buy/sell/deposit/deposit_stock/withdraw
+        # e) If stock not in stocks add there first
+        # f) Inserts are idempotent
+        # g) Respective methods will add an entry to the database for the transaction (not in eod position)
+        # h) Once file completed update last processed batch for the location
+        # i) Once all files are processed get all stock prices since last price in db
+        #        (including symbols from transactions)
+        # j) Update eod positions: if doesn't exist add, if exists update with delta
+        #        (Assume that transactions will not be applied retroactively)
+        # k) ...TODO
+        pass
+
+"""

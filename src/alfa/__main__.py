@@ -1,3 +1,5 @@
+import random
+
 from alfa.db import BaseModel, Portfolio, Stock, open_db
 from alfa.util import get_current_utc_timestamp
 
@@ -11,6 +13,9 @@ if __name__ == "__main__":
                     f"Price {idx}: Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}"
                 )
             _ = stock.get_most_recent_price()
+
+    def get_external_id():
+        return random.random() * 1000
 
     db = open_db()
     db.connect()
@@ -46,8 +51,8 @@ if __name__ == "__main__":
     print(f"{stock.symbol} has {len(stock.prices)} prices")
     display_stocks(p.get_watchlist())
 
-    p.deposit(14, 100, get_current_utc_timestamp())
-    p.withdraw(15, 90, get_current_utc_timestamp())
+    p.deposit(get_external_id(), 100, get_current_utc_timestamp())
+    p.withdraw(get_external_id(), 90, get_current_utc_timestamp())
 
     print(f"{p.name} cash balance is {p.cash}")
 

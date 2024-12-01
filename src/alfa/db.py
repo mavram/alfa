@@ -1,37 +1,14 @@
-# CREATE TABLE IF NOT EXISTS transaction_ledger (
-#     id INTEGER PRIMARY KEY,
-#     external_id INTEGER NOT NULL UNIQUE,
-#     portfolio_id INTEGER,
-#     timestamp INTEGER NOT NULL,
-#     stock_id INTEGER,
-#     quantity NOT NULL,
-#     price NOT NULL,
-#     type NOT NULL, -- BUY, SELL, DEPOSIT_STOCK
-#     fees NOT NULL,
-#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
-#     FOREIGN KEY (stock_id) REFERENCES stock (id)
-#     );
-
-# CREATE TABLE IF NOT EXISTS last_processed_batch (
-#     location TEXT PRIMARY KEY,
-#     batch NOT NULL UNIQUE
-#     );
-
-# CREATE TABLE IF NOT EXISTS end_of_day_position (
-#     id INTEGER PRIMARY KEY,
-#     portfolio_id INTEGER,
-#     stock_id INTEGER,
-#     symbol TEXT NOT NULL UNIQUE,
-#     date NOT NULL,
-#     size NOT NULL,
-#     average_price NOT NULL,
-#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
-#     FOREIGN KEY (stock_id) REFERENCES stock (id)
-#     );
-
 from enum import Enum
 
-from peewee import DateTimeField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+from peewee import (
+    DateTimeField,
+    FloatField,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    SqliteDatabase,
+    TextField,
+)
 
 from alfa.config import log, settings
 from alfa.util import create_directories_for_path
@@ -80,8 +57,10 @@ class Stock(BaseModel):
             Stock or None: The created Stock object, or None if an error occurred.
         """
         try:
-            if not symbol:
-                raise ValueError("Symbol cannot be empty.")
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
+
             stock = Stock.create(symbol=symbol, name=name)
             log.debug(f"Stock with symbol {symbol} was successfully added.")
             return stock
@@ -145,7 +124,7 @@ class Price(BaseModel):
     id = IntegerField(primary_key=True)
     stock = ForeignKeyField(Stock, field="id", backref="prices", on_delete="CASCADE")
     symbol = TextField()
-    timestamp = DateTimeField()
+    timestamp = DateTimeField()  # Unix epoch time
     open = FloatField()
     high = FloatField()
     low = FloatField()
@@ -155,8 +134,8 @@ class Price(BaseModel):
 
 
 class CurrencyType(Enum):
-    CAD = "Canadian Dollar"
-    USD = "US Dollar"
+    CAD = "CAD"
+    USD = "USD"
 
 
 class TransactionType(str, Enum):
@@ -171,7 +150,7 @@ class Portfolio(BaseModel):
     id = IntegerField(primary_key=True)
     name = TextField(unique=True)
     currency = TextField(
-        choices=[c.name for c in CurrencyType],
+        choices=[c.value for c in CurrencyType],
     )
     cash = FloatField(default=0.0)
 
@@ -188,8 +167,8 @@ class Portfolio(BaseModel):
             Portfolio or None: The created Portfolio object, or None if an error occurs.
         """
         try:
-            portfolio = Portfolio.create(name=name, currency=currency.name)
-            log.debug(f"Portfolio {name} in {currency.name} was successfully added.")
+            portfolio = Portfolio.create(name=name, currency=currency.value)
+            log.debug(f"Portfolio {name} in {currency.value} was successfully added.")
             return portfolio
         except Exception as e:
             log.error(f"Error adding portfolio {name}. {e}")
@@ -217,6 +196,38 @@ class Portfolio(BaseModel):
         """
         return CurrencyType[self.currency]
 
+    def is_watching(self, symbol):
+        """
+        Determine whether the portfolio is currently watching a specific stock symbol.
+
+        This method queries the `StockToWatch` table to check if there exists an association
+        between the current portfolio (`self`) and the stock identified by the provided `symbol`.
+        It returns `True` if such an association exists, indicating that the portfolio is
+        actively watching the specified stock; otherwise, it returns `False`.
+
+        Args:
+            symbol (str): The stock symbol to check (e.g., "AAPL").
+
+        Returns:
+            bool:
+                - `True` if the portfolio is watching the specified stock.
+                - `False` otherwise.
+
+        Raises:
+            ValueError: If the `symbol` provided is an empty string or not a string type.
+            peewee.OperationalError: If there is an issue connecting to the database.
+            peewee.DatabaseError: For other general database-related errors.
+        """
+        if not isinstance(symbol, str) or not symbol.strip():
+            raise ValueError("Symbol must be a non-empty string.")
+
+        query = (
+            StockToWatch.select()
+            .join(Stock)
+            .where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
+        )
+        return query.exists()
+
     def start_watching(self, symbol, name=None):
         """
         Adds a stock to the watchlist for the current portfolio.
@@ -233,13 +244,11 @@ class Portfolio(BaseModel):
             bool: True if the stock was successfully added to the watchlist, False otherwise.
         """
         try:
-            query = (
-                StockToWatch.select()
-                .join(Stock)
-                .where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
-            )
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
 
-            if query.exists():
+            if self.is_watching(symbol):
                 log.debug(f"{self.name} is already watching {symbol}.")
                 return True
 
@@ -265,6 +274,10 @@ class Portfolio(BaseModel):
             bool: True if the stock was successfully removed from the watchlist, False otherwise.
         """
         try:
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
+
             # Retrieve the Stock instance with the given symbol
             stock = Stock.get_or_none(Stock.symbol == symbol)
             if not stock:
@@ -367,29 +380,250 @@ class Portfolio(BaseModel):
             log.error(f"Failed to withdraw {amount} from portfolio {self.name}. {e}")
             return False
 
+    def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
+        """
+        Buys a specified quantity of a stock, updates cash balance, and records the transaction.
+
+        Args:
+            external_id (int): Unique external identifier for the transaction.
+            timestamp (int): Unix epoch time of the transaction.
+            symbol (str): Stock symbol to buy.
+            quantity (int): Number of shares to buy.
+            price (float): Price per share.
+            fees (float): Transaction fees.
+
+        Returns:
+            bool: True if the transaction was successful, False otherwise.
+        """
+        try:
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
+
+            with db.atomic():
+                total_cost = quantity * price + fees
+                if self.cash < total_cost:
+                    log.error(
+                        f"Insufficient cash to buy {quantity} shares of {symbol}. \
+                        Required: {total_cost}, Available: {self.cash}"
+                    )
+                    return False
+
+                # Update cash balance
+                self.cash -= total_cost
+                self.save()
+
+                # Automatically add symbol to watchlist
+                if not self.start_watching(symbol):
+                    return False
+                stock = Stock.get(symbol=symbol)
+
+                # TODO: update position
+
+                # Record the transaction
+                TransactionLedger.create(
+                    external_id=external_id,
+                    portfolio=self,
+                    timestamp=timestamp,
+                    stock=stock,
+                    quantity=quantity,
+                    price=price,
+                    type=TransactionType.BUY.value,
+                    fees=fees,
+                )
+
+            log.info(
+                f"BUY {quantity} shares of {symbol} at {price} each. Total Cost: {total_cost}. Fees: {fees}."
+            )
+            return True
+
+        except Exception as e:
+            log.error(f"Failed to execute BUY {quantity} shares of {symbol} at {price} each. {e}")
+            return False
+
+    def deposit_in_kind(self, external_id, timestamp, symbol, quantity, cost_basis_per_share, fees=0.0):
+        """
+        Deposits a specified quantity of a stock into the portfolio, updates positions, and records the transaction.
+
+        Args:
+            external_id (int): Unique external identifier for the transaction.
+            timestamp (int): Unix epoch time of the transaction.
+            symbol (str): Stock symbol to deposit.
+            quantity (int): Number of shares to deposit.
+            cost_basis_per_share (float): Cost basis per share.
+            fees (float): Transaction fees.
+
+        Returns:
+            bool: True if the transaction was successful, False otherwise.
+        """
+        try:
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
+
+            with db.atomic():
+                # Automatically add symbol to watchlist
+                if not self.start_watching(symbol):
+                    return False
+                stock = Stock.get(symbol=symbol)
+
+                # TODO: update position
+
+                # Record the transaction
+                TransactionLedger.create(
+                    external_id=external_id,
+                    portfolio=self,
+                    timestamp=timestamp,
+                    stock=stock,
+                    quantity=quantity,
+                    price=cost_basis_per_share,
+                    type=TransactionType.DEPOSIT_STOCK.value,
+                    fees=fees,
+                )
+
+            log.info(
+                f"DEPOSIT_IN_KIND {quantity} shares of {symbol} at {cost_basis_per_share} each. Fees: {fees}."
+            )
+            return True
+
+        except Exception as e:
+            log.error(
+                f"Failed to execute DEPOSIT_IN_KIND {quantity} shares of {symbol} at {cost_basis_per_share} each. {e}"
+            )
+            return False
+
+    def sell(self, external_id, symbol, quantity, price, fees, timestamp):
+        """
+        Sells a specified quantity of a stock, updates cash balance, and records the transaction.
+
+        Args:
+            external_id (int): Unique external identifier for the transaction.
+            symbol (str): Stock symbol to sell.
+            quantity (int): Number of shares to sell.
+            price (float): Price per share.
+            fees (float): Transaction fees.
+            timestamp (int): Unix epoch time of the transaction.
+
+        Returns:
+            bool: True if the transaction was successful, False otherwise.
+        """
+        try:
+            if not isinstance(symbol, str) or not symbol.strip():
+                raise ValueError("Symbol must be a non-empty string.")
+            symbol = symbol.upper()
+
+            with db.atomic():
+                if not self.is_watching(symbol):
+                    log.error(f"{self.name} is not owning stock {symbol.upper()}.")
+                    return False
+                stock = Stock.get(symbol=symbol)
+
+                # TODO: update position and stop watching is liquidating sell
+
+                # Calculate total proceeds
+                total_proceeds = quantity * price - fees
+
+                # Update cash balance
+                self.cash += total_proceeds
+                self.save()
+
+                # Record the transaction
+                TransactionLedger.create(
+                    external_id=external_id,
+                    portfolio=self,
+                    timestamp=timestamp,
+                    stock=stock,
+                    quantity=-quantity,  # Negative quantity for SELL
+                    price=price,
+                    type=TransactionType.SELL.value,
+                    fees=fees,
+                )
+
+            log.info(
+                f"SELL {quantity} shares of {symbol.upper()} at {price} each. Total Proceeds: {total_proceeds}. Fees: {fees}."
+            )
+            return True
+
+        except Exception as e:
+            log.error(f"Failed to execute SELL {quantity} shares of {symbol.upper()} at {price} each. {e}")
+            return False
+
 
 class StockToWatch(BaseModel):
     id = IntegerField(primary_key=True)
-    stock = ForeignKeyField(Stock, field="id")
     portfolio = ForeignKeyField(Portfolio, field="id", on_delete="CASCADE")
+    stock = ForeignKeyField(Stock, field="id")
 
     class Meta:
         table_name = "stock_to_watch"
+        indexes = ((("portfolio", "stock"), True),)
 
 
 class CashLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
-    portfolio = ForeignKeyField(Portfolio, field="id", backref="cash_ledger")
-    timestamp = IntegerField()
+    portfolio = ForeignKeyField(Portfolio, field="id", backref="cash_ledger", on_delete="CASCADE")
+    timestamp = IntegerField()  # Unix epoch time
     amount = FloatField()
-    type = TextField(choices=[TransactionType.DEPOSIT.name, TransactionType.WITHDRAW.name])
+    type = TextField(choices=[TransactionType.DEPOSIT.value, TransactionType.WITHDRAW.value])
 
     class Meta:
         table_name = "cash_ledger"
+        indexes = ((("external_id",), True),)
+
+
+class TransactionLedger(BaseModel):
+    id = IntegerField(primary_key=True)
+    external_id = TextField(unique=True)
+    portfolio = ForeignKeyField(Portfolio, field="id", backref="transaction_ledger", on_delete="CASCADE")
+    timestamp = IntegerField(null=False)  # Unix epoch time
+    stock = ForeignKeyField(Stock, field="id")
+    quantity = IntegerField()
+    price = FloatField()
+    type = TextField(
+        choices=[[TransactionType.DEPOSIT.value, TransactionType.WITHDRAW.value]],
+    )
+    fees = FloatField()
+
+    class Meta:
+        table_name = "transaction_ledger"
+        indexes = ((("external_id",), True),)
 
 
 """
+
+CREATE TABLE IF NOT EXISTS transaction_ledger (
+    id INTEGER PRIMARY KEY,
+    external_id INTEGER NOT NULL UNIQUE,
+    portfolio_id INTEGER,
+    timestamp INTEGER NOT NULL,
+    stock_id INTEGER,
+    quantity NOT NULL,
+    price NOT NULL,
+    type NOT NULL, -- BUY, SELL, DEPOSIT_STOCK
+    fees NOT NULL,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+    FOREIGN KEY (stock_id) REFERENCES stock (id)
+    );
+
+CREATE TABLE IF NOT EXISTS last_processed_batch (
+    location TEXT PRIMARY KEY,
+    batch NOT NULL UNIQUE
+    );
+
+CREATE TABLE IF NOT EXISTS end_of_day_position (
+    id INTEGER PRIMARY KEY,
+    portfolio_id INTEGER,
+    stock_id INTEGER,
+    symbol TEXT NOT NULL UNIQUE,
+    date NOT NULL,
+    size NOT NULL,
+    average_price NOT NULL,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+    FOREIGN KEY (stock_id) REFERENCES stock (id)
+    );
+
+
 class OldPortfolio:
     def get_positions(self):
         return list(self.positions.keys())

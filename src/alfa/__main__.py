@@ -55,10 +55,27 @@ if __name__ == "__main__":
     p.withdraw(get_external_id(), 90, get_current_utc_timestamp())
 
     print(f"{p.name} cash balance is {p.cash}")
+    print(f"{p.name} has {len(p.cash_ledger)} cash ledger entries.")
+    print(f"{p.name} has {len(p.transaction_ledger)} transaction ledger entries.")
+
+    for c in p.cash_ledger:
+        print(
+            f"{c.portfolio.name} - Cash Ledger Entry - external_id: {c.external_id}, amount: {c.amount}, type: {c.type}"
+        )
+
+    for t in p.transaction_ledger:
+        print(
+            f"{t.portfolio.name} - Transaction Ledger Entry - external_id: {t.external_id}, stock: {t.stock.symbol}, \
+                quantity: {t.quantity}, price: {t.price}, type: {t.type}"
+        )
 
     p.stop_watching("AAPL")
     watchlist = p.get_watchlist()
     for s in watchlist:
         print(f"{p.name} watching {s.symbol}")
+
+    print(f"{p.name} cash balance is {p.cash}")
+    print(f"{p.name} has {len(p.cash_ledger)} cash ledger entries.")
+    print(f"{p.name} has {len(p.transaction_ledger)} transaction ledger entries.")
 
     db.close()

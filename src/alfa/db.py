@@ -12,17 +12,6 @@
 #     FOREIGN KEY (stock_id) REFERENCES stock (id)
 #     );
 
-# CREATE TABLE IF NOT EXISTS cash_ledger (
-#     id INTEGER PRIMARY KEY,
-#     external_id INTEGER NOT NULL UNIQUE,
-#     portfolio_id INTEGER,
-#     timestamp INTEGER NOT NULL,
-#     amount NOT NULL,
-#     type NOT NULL, -- DEPOSIT / WITHDRAW
-#     balance NOT NULL,
-#     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id)
-#     );
-
 # CREATE TABLE IF NOT EXISTS last_processed_batch (
 #     location TEXT PRIMARY KEY,
 #     batch NOT NULL UNIQUE
@@ -66,27 +55,33 @@ class BaseModel(Model):
     def get_models():
         """
         Lists all direct subclasses (models) of BaseModel.
-        :return: A list of model classes.
+
+        Returns:
+            list: A list of model classes.
         """
         return BaseModel.__subclasses__()
 
 
-# Stock model
 class Stock(BaseModel):
     id = IntegerField(primary_key=True)
-    symbol = TextField(unique=True, null=False)
+    symbol = TextField(unique=True)
     name = TextField(null=True)
 
     @staticmethod
     def add_stock(symbol, name=None):
         """
-        Add a new stock to the database.
+        Adds a new stock to the database.
 
-        :param symbol: The stock symbol (e.g., "AAPL").
-        :param name: The stock name (e.g., "Apple Inc.").
-        :return: The created Stock object or None if an error occurred.
+        Args:
+            symbol (str): The stock symbol (e.g., "AAPL").
+            name (str, optional): The stock name (e.g., "Apple Inc."). Defaults to None.
+
+        Returns:
+            Stock or None: The created Stock object, or None if an error occurred.
         """
         try:
+            if not symbol:
+                raise ValueError("Symbol cannot be empty.")
             stock = Stock.create(symbol=symbol, name=name)
             log.debug(f"Stock with symbol {symbol} was successfully added.")
             return stock
@@ -98,11 +93,8 @@ class Stock(BaseModel):
         """
         Retrieves the most recent price entry for the stock.
 
-        This method queries the related `Price` entries for the stock,
-        orders them by timestamp in descending order, and returns the latest price.
-
-        :return: The most recent `Price` object for the stock, or None if no prices are available.
-        :rtype: Price or None
+        Returns:
+            Price or None: The most recent Price object for the stock, or None if no prices are available.
         """
         price = self.prices.order_by(Price.timestamp.desc()).first()
         if price:
@@ -115,18 +107,24 @@ class Stock(BaseModel):
         """
         Adds a price entry for this stock.
 
-        :param timestamp: The timestamp of the price.
-        :param open: The opening price.
-        :param high: The highest price.
-        :param low: The lowest price.
-        :param close: The closing price.
-        :param adjusted_close: The adjusted closing price.
-        :param volume: The volume of the stock traded.
-        :return: The created Price object or None if an error occurred.
+        Args:
+            timestamp (UTC epoch time): The timestamp of the price.
+            open (float): The opening price.
+            high (float): The highest price.
+            low (float): The lowest price.
+            close (float): The closing price.
+            adjusted_close (float): The adjusted closing price.
+            volume (int): The volume of the stock traded.
+
+        Returns:
+            Price or None: The created Price object, or None if an error occurred.
         """
         try:
+            if volume < 0:
+                raise ValueError("Volume cannot be negative.")
+
             price = Price.create(
-                stock_id=self.id,
+                stock=self,
                 symbol=self.symbol,
                 timestamp=timestamp,
                 open=open,
@@ -145,39 +143,53 @@ class Stock(BaseModel):
 
 class Price(BaseModel):
     id = IntegerField(primary_key=True)
-    stock_id = ForeignKeyField(Stock, backref="prices", on_delete="CASCADE")
-    symbol = TextField(null=False)
-    timestamp = DateTimeField(null=False)
-    open = FloatField(null=False)
-    high = FloatField(null=False)
-    low = FloatField(null=False)
-    close = FloatField(null=False)
-    adjusted_close = FloatField(null=False)
-    volume = IntegerField(null=False)
+    stock = ForeignKeyField(Stock, field="id", backref="prices", on_delete="CASCADE")
+    symbol = TextField()
+    timestamp = DateTimeField()
+    open = FloatField()
+    high = FloatField()
+    low = FloatField()
+    close = FloatField()
+    adjusted_close = FloatField()
+    volume = IntegerField()
 
 
-class Currency(Enum):
+class CurrencyType(Enum):
     CAD = "Canadian Dollar"
     USD = "US Dollar"
 
 
+class TransactionType(str, Enum):
+    BUY = "BUY"
+    DEPOSIT = "DEPOSIT"
+    DEPOSIT_STOCK = "DEPOSIT_STOCK"
+    SELL = "SELL"
+    WITHDRAW = "WITHDRAW"
+
+
 class Portfolio(BaseModel):
     id = IntegerField(primary_key=True)
-    name = TextField(unique=True, null=False)
-    currency = TextField(null=False)
+    name = TextField(unique=True)
+    currency = TextField(
+        choices=[c.name for c in CurrencyType],
+    )
+    cash = FloatField(default=0.0)
 
     @staticmethod
-    def add_portfolio(name, currency=Currency.USD):
+    def add_portfolio(name, currency=CurrencyType.USD):
         """
         Adds a new portfolio to the database.
 
-        :param name: The name of the portfolio.
-        :param currency: The currency of the portfolio. Defaults to USD
-        :return: The created Portfolio object, or None if an error occurs.
+        Args:
+            name (str): The name of the portfolio.
+            currency (CurrencyType, optional): The currency of the portfolio. Defaults to CurrencyType.USD.
+
+        Returns:
+            Portfolio or None: The created Portfolio object, or None if an error occurs.
         """
         try:
             portfolio = Portfolio.create(name=name, currency=currency.name)
-            log.debug(f"Portfolio {name} in {currency} was succesfully added .")
+            log.debug(f"Portfolio {name} in {currency.name} was successfully added.")
             return portfolio
         except Exception as e:
             log.error(f"Error adding portfolio {name}. {e}")
@@ -188,18 +200,22 @@ class Portfolio(BaseModel):
         """
         Retrieves all portfolios from the database.
 
-        :return: A list of Portfolio objects.
+        Returns:
+            list: A list of Portfolio objects.
         """
         return list(Portfolio.select())
 
     def get_currency(self):
         """
-        Retrieves the currency as a Currency enum instance.
+        Retrieves the currency as a CurrencyType enum instance.
 
-        :return: A Currency enum instance corresponding to the `self.currency` attribute.
-        :raises KeyError: If `self.currency` does not match any Currency enum member.
+        Returns:
+            CurrencyType: A CurrencyType enum instance corresponding to the `self.currency` attribute.
+
+        Raises:
+            KeyError: If `self.currency` does not match any CurrencyType enum member.
         """
-        return Currency[self.currency]
+        return CurrencyType[self.currency]
 
     def start_watching(self, symbol, name=None):
         """
@@ -209,33 +225,29 @@ class Portfolio(BaseModel):
         If the stock is not in the watchlist, it tries to retrieve the stock from the `Stock` model.
         If the stock does not exist, it creates a new stock entry before adding it to the watchlist.
 
-        :param symbol: The symbol of the stock to start watching (e.g., "AAPL").
-        :param name: Optional. The name of the stock to start watching (e.g., "Apple Inc.").
-                    If the stock does not exist, this name will be used to create a new stock entry.
-        :return:
-            - True if the stock was successfully added to the watchlist.
-            - False if the stock is already being watched or if an error occurred.
-        :rtype: bool
+        Args:
+            symbol (str): The symbol of the stock to start watching (e.g., "AAPL").
+            name (str, optional): The name of the stock (e.g., "Apple Inc."). Defaults to None.
+
+        Returns:
+            bool: True if the stock was successfully added to the watchlist, False otherwise.
         """
         try:
-            query = StockToWatch.select().where(
-                (StockToWatch.symbol == symbol) & (StockToWatch.portfolio_id == self.id)
+            query = (
+                StockToWatch.select()
+                .join(Stock)
+                .where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
             )
+
             if query.exists():
                 log.debug(f"{self.name} is already watching {symbol}.")
                 return True
 
-            stock = Stock.get_or_none(Stock.symbol == symbol)
-            if not stock:
-                log.debug(f"Add stock {symbol} to watch for {self.name}.")
-                stock = Stock.create(symbol=symbol, name=name)
-                log.debug(f"{symbol} was successfully added.")
+            stock, created = Stock.get_or_create(symbol=symbol, defaults={"name": name})
+            if created:
+                log.debug(f"{symbol} was added to watch for {self.name}.")
 
-            StockToWatch.create(
-                stock_id=stock.id,
-                symbol=symbol,
-                portfolio_id=self.id,
-            )
+            StockToWatch.create(stock=stock, portfolio=self)
             log.debug(f"{self.name} started watching {symbol}.")
             return True
         except Exception as e:  # pragma: no cover
@@ -244,15 +256,23 @@ class Portfolio(BaseModel):
 
     def stop_watching(self, symbol):
         """
-        Deletes a StockToWatch entry for a specific portfolio and stock symbol.
+        Removes a stock from the watchlist for the current portfolio.
 
-        :param symbol: The symbol of the stock to delete (e.g., "AAPL").
-        :return: True if the stock was successfully removed from the watchlist,
-                False if the stock is not being watched or if an error occurred.
+        Args:
+            symbol (str): The symbol of the stock to stop watching (e.g., "AAPL").
+
+        Returns:
+            bool: True if the stock was successfully removed from the watchlist, False otherwise.
         """
         try:
+            # Retrieve the Stock instance with the given symbol
+            stock = Stock.get_or_none(Stock.symbol == symbol)
+            if not stock:
+                log.debug(f"Stock {symbol} not found.")
+                return False
+            # Delete the StockToWatch entry
             query = StockToWatch.delete().where(
-                (StockToWatch.symbol == symbol) & (StockToWatch.portfolio_id == self.id)
+                (StockToWatch.stock == stock) & (StockToWatch.portfolio == self)
             )
             rows_deleted = query.execute()
             if rows_deleted > 0:
@@ -268,21 +288,102 @@ class Portfolio(BaseModel):
         """
         Retrieves all stocks being watched for this portfolio.
 
-        :return: A list of Stock objects associated with this portfolio. For errors return an empty list.
-        :rtype: list[Stock]
+        Returns:
+            list[Stock]: A list of Stock objects associated with this portfolio. Returns an empty list if an error occurs.
         """
         try:
-            return Stock.select().join(StockToWatch).where(StockToWatch.portfolio_id == self.id)
+            return list(Stock.select().join(StockToWatch).where(StockToWatch.portfolio == self))
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to get watchlist for portfolio {self.name}. {e}")
             return []
 
+    def deposit(self, external_id, amount, timestamp):
+        """
+        Deposits cash into the portfolio and records the transaction in the CashLedger.
+
+        Args:
+            external_id (int): An external identifier for the transaction.
+            amount (float): The amount to deposit.
+            timestamp (int): The timestamp of the transaction.
+
+        Returns:
+            bool: True if the deposit was successful, False otherwise.
+        """
+        try:
+            with db.atomic():
+                # Create a new entry in the CashLedger
+                CashLedger.create(
+                    external_id=external_id,
+                    portfolio=self,
+                    timestamp=timestamp,
+                    amount=amount,
+                    type=TransactionType.DEPOSIT.value,  # Store the enum value
+                )
+
+                # Update the portfolio's cash balance
+                self.cash += amount
+                self.save()
+
+            log.info(f"DEPOSIT {amount} into portfolio {self.name}.")
+            return True
+        except Exception as e:
+            log.error(f"Failed to deposit {amount} into portfolio {self.name}. {e}")
+            return False
+
+    def withdraw(self, external_id, amount, timestamp):
+        """
+        Withdraws cash from the portfolio and records the transaction in the CashLedger.
+
+        Args:
+            external_id (int): An external identifier for the transaction.
+            amount (float): The amount to withdraw.
+            timestamp (int): The timestamp of the transaction.
+
+        Returns:
+            bool: True if the withdrawal was successful, False otherwise.
+        """
+        try:
+            with db.atomic():
+                if amount > self.cash:
+                    log.info(
+                        f"Requested amount {amount} exceeds cash balance {self.cash} in portfolio {self.name}."
+                    )
+                    amount = self.cash  # Cap the amount to the available cash
+
+                CashLedger.create(
+                    external_id=external_id,
+                    portfolio=self,
+                    timestamp=timestamp,
+                    amount=-amount,  # Negative amount to indicate withdrawal
+                    type=TransactionType.WITHDRAW.value,
+                )
+
+                self.cash -= amount
+                self.save()
+
+            log.info(f"WITHDRAW {amount} from portfolio {self.name}.")
+            return True
+        except Exception as e:
+            log.error(f"Failed to withdraw {amount} from portfolio {self.name}. {e}")
+            return False
+
 
 class StockToWatch(BaseModel):
     id = IntegerField(primary_key=True)
-    stock_id = ForeignKeyField(Stock, null=False)
-    symbol = TextField(unique=False, null=False)
-    portfolio_id = ForeignKeyField(Portfolio, on_delete="CASCADE")
+    stock = ForeignKeyField(Stock, field="id")
+    portfolio = ForeignKeyField(Portfolio, field="id", on_delete="CASCADE")
 
     class Meta:
         table_name = "stock_to_watch"
+
+
+class CashLedger(BaseModel):
+    id = IntegerField(primary_key=True)
+    external_id = IntegerField(unique=True)
+    portfolio = ForeignKeyField(Portfolio, field="id", backref="cash_ledger")
+    timestamp = IntegerField()
+    amount = FloatField()
+    type = TextField(choices=[TransactionType.DEPOSIT.name, TransactionType.WITHDRAW.name])
+
+    class Meta:
+        table_name = "cash_ledger"

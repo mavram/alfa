@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from alfa.db import BaseModel, Portfolio, Stock, open_db
+from alfa.util import get_current_utc_timestamp
 
 if __name__ == "__main__":
 
@@ -11,10 +10,7 @@ if __name__ == "__main__":
                 print(
                     f"Price {idx}: Date {price.timestamp}, Stock {price.symbol}, Price: {price.adjusted_close}"
                 )
-
-            most_recent_price = stock.get_most_recent_price()
-            if most_recent_price:
-                print(f"Most recent price is {most_recent_price.timestamp}")
+            _ = stock.get_most_recent_price()
 
     db = open_db()
     db.connect()
@@ -29,9 +25,6 @@ if __name__ == "__main__":
         exit()
 
     portfolios = Portfolio.get_portfolios()
-    for p in portfolios:
-        print(f"{p.name} uses {p.get_currency()}")
-
     p = portfolios[0]
 
     p.start_watching("AAPL", "Apple Inc.")
@@ -41,7 +34,7 @@ if __name__ == "__main__":
 
     stock = Stock.get(Stock.symbol == "AAPL")
     stock.add_price(
-        timestamp=datetime.now(),
+        timestamp=get_current_utc_timestamp(),
         open=152.0,
         high=157.0,
         low=150.0,
@@ -52,5 +45,10 @@ if __name__ == "__main__":
 
     print(f"{stock.symbol} has {len(stock.prices)} prices")
     display_stocks(p.get_watchlist())
+
+    p.deposit(14, 100, get_current_utc_timestamp())
+    p.withdraw(15, 90, get_current_utc_timestamp())
+
+    print(f"{p.name} cash balance is {p.cash}")
 
     db.close()

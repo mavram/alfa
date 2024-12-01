@@ -58,6 +58,10 @@ def test_stop_watching(setup_database):
     removed_again = portfolio.stop_watching("AAPL")
     assert removed_again is False
 
+    # Attempt to remove another non-existent stock
+    removed = portfolio.stop_watching("MSFT")
+    assert removed is False
+
 
 def test_get_currency(setup_database):
     portfolio = Portfolio.add_portfolio("__theta__", CurrencyType.CAD)

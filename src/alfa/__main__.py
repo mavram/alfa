@@ -51,4 +51,9 @@ if __name__ == "__main__":
 
     print(f"{p.name} cash balance is {p.cash}")
 
+    p.stop_watching("AAPL")
+    watchlist = p.get_watchlist()
+    for s in watchlist:
+        print(f"{p.name} watching {s.symbol}")
+
     db.close()

@@ -238,7 +238,7 @@ class Portfolio(BaseModel):
             )
             log.debug(f"{self.name} started watching {symbol}.")
             return True
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Failed to start watching {symbol} for portfolio {self.name}. {e}")
             return False
 
@@ -260,7 +260,7 @@ class Portfolio(BaseModel):
                 return True
             log.debug(f"No stock {symbol} found in portfolio {self.name}.")
             return False
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Failed to stop watching {symbol} for portfolio {self.name}. {e}")
             return False
 
@@ -268,10 +268,14 @@ class Portfolio(BaseModel):
         """
         Retrieves all stocks being watched for this portfolio.
 
-        :return: A list of Stock objects associated with this portfolio.
+        :return: A list of Stock objects associated with this portfolio. For errors return an empty list.
         :rtype: list[Stock]
         """
-        return Stock.select().join(StockToWatch).where(StockToWatch.portfolio_id == self.id)
+        try:
+            return Stock.select().join(StockToWatch).where(StockToWatch.portfolio_id == self.id)
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to get watchlist for portfolio {self.name}. {e}")
+            return []
 
 
 class StockToWatch(BaseModel):

@@ -34,6 +34,10 @@ def test_start_watching(setup_database):
     assert added_again is True  # Method does nothing if already watched
     assert len(portfolio.get_watchlist()) == 1  # No duplicate entries
 
+    # Add stock that is not in stocks to watchlist
+    added = portfolio.start_watching("TSLA")
+    assert added is True
+
 
 def test_stop_watching(setup_database):
     # Create portfolio and stock

@@ -397,8 +397,8 @@ class Portfolio(BaseModel):
                 total_cost = quantity * price + fees
                 if self.cash < total_cost:
                     log.error(
-                        f"Insufficient cash to buy {quantity} shares of {symbol}. \
-                        Required: {total_cost}, Available: {self.cash}"
+                        f"Insufficient cash to buy {quantity} shares of {symbol}."
+                        f"Required: {total_cost}, Available: {self.cash}"
                     )
                     return False
 
@@ -485,17 +485,17 @@ class Portfolio(BaseModel):
             )
             return False
 
-    def sell(self, external_id, symbol, quantity, price, fees, timestamp):
+    def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         """
         Sells a specified quantity of a stock, updates cash balance, and records the transaction.
 
         Args:
             external_id (int): Unique external identifier for the transaction.
+            timestamp (int): Unix epoch time of the transaction.
             symbol (str): Stock symbol to sell.
             quantity (int): Number of shares to sell.
             price (float): Price per share.
             fees (float): Transaction fees.
-            timestamp (int): Unix epoch time of the transaction.
 
         Returns:
             bool: True if the transaction was successful, False otherwise.

@@ -32,6 +32,8 @@ if __name__ == "__main__":
     portfolios = Portfolio.get_portfolios()
     p = portfolios[0]
 
+    print(f"At the start {p.name} cash balance is {p.cash}")
+
     p.start_watching("AAPL", "Apple Inc.")
     p.start_watching("TSLA")
 
@@ -52,7 +54,15 @@ if __name__ == "__main__":
     display_stocks(p.get_watchlist())
 
     p.deposit(get_external_id(), 100, get_current_utc_timestamp())
+    print(f"{p.name} cash balance is {p.cash}")
     p.withdraw(get_external_id(), 90, get_current_utc_timestamp())
+    print(f"{p.name} cash balance is {p.cash}")
+    p.buy(get_external_id(), get_current_utc_timestamp(), "MSFT", 10, 1)
+    print(f"{p.name} cash balance is {p.cash}")
+    p.deposit_in_kind(get_external_id(), get_current_utc_timestamp(), "MSFT", 100, 12)
+    print(f"{p.name} cash balance is {p.cash}")
+    p.sell(get_external_id(), get_current_utc_timestamp(), "MSFT", 1, 2)
+    print(f"{p.name} cash balance is {p.cash}")
 
     print(f"{p.name} cash balance is {p.cash}")
     print(f"{p.name} has {len(p.cash_ledger)} cash ledger entries.")
@@ -60,13 +70,13 @@ if __name__ == "__main__":
 
     for c in p.cash_ledger:
         print(
-            f"{c.portfolio.name} - Cash Ledger Entry - external_id: {c.external_id}, amount: {c.amount}, type: {c.type}"
+            f"{c.portfolio.name} - Cash Ledger Entry - uuid: {c.external_id}, amount: {c.amount}, type: {c.type}"
         )
 
     for t in p.transaction_ledger:
         print(
-            f"{t.portfolio.name} - Transaction Ledger Entry - external_id: {t.external_id}, stock: {t.stock.symbol}, \
-                quantity: {t.quantity}, price: {t.price}, type: {t.type}"
+            f"{t.portfolio.name} - Txn Ledger Entry - uuid: {t.external_id}, stock: {t.stock.symbol},"
+            f"quantity: {t.quantity}, price: {t.price}, type: {t.type}"
         )
 
     p.stop_watching("AAPL")
@@ -74,8 +84,8 @@ if __name__ == "__main__":
     for s in watchlist:
         print(f"{p.name} watching {s.symbol}")
 
-    print(f"{p.name} cash balance is {p.cash}")
-    print(f"{p.name} has {len(p.cash_ledger)} cash ledger entries.")
-    print(f"{p.name} has {len(p.transaction_ledger)} transaction ledger entries.")
+    print(f"At the end {p.name} cash balance is {p.cash}")
+    print(f"At the end {p.name} has {len(p.cash_ledger)} cash ledger entries.")
+    print(f"At the end {p.name} has {len(p.transaction_ledger)} transaction ledger entries.")
 
     db.close()

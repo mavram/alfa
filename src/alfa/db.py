@@ -1,14 +1,6 @@
 from enum import Enum
 
-from peewee import (
-    DateTimeField,
-    FloatField,
-    ForeignKeyField,
-    IntegerField,
-    Model,
-    SqliteDatabase,
-    TextField,
-)
+from peewee import FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
 from alfa.util import create_directories_for_path
@@ -18,6 +10,7 @@ db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 def open_db():
     path = settings.DB_PATH
+
     log.debug(f"Initializing database {path}")
     create_directories_for_path(path)
     db.init(path)
@@ -124,7 +117,7 @@ class Price(BaseModel):
     id = IntegerField(primary_key=True)
     stock = ForeignKeyField(Stock, field="id", backref="prices", on_delete="CASCADE")
     symbol = TextField()
-    timestamp = DateTimeField()  # Unix epoch time
+    timestamp = IntegerField()  # Unix epoch time
     open = FloatField()
     high = FloatField()
     low = FloatField()
@@ -591,20 +584,6 @@ class TransactionLedger(BaseModel):
 
 
 """
-
-CREATE TABLE IF NOT EXISTS transaction_ledger (
-    id INTEGER PRIMARY KEY,
-    external_id INTEGER NOT NULL UNIQUE,
-    portfolio_id INTEGER,
-    timestamp INTEGER NOT NULL,
-    stock_id INTEGER,
-    quantity NOT NULL,
-    price NOT NULL,
-    type NOT NULL, -- BUY, SELL, DEPOSIT_STOCK
-    fees NOT NULL,
-    FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
-    FOREIGN KEY (stock_id) REFERENCES stock (id)
-    );
 
 CREATE TABLE IF NOT EXISTS last_processed_batch (
     location TEXT PRIMARY KEY,

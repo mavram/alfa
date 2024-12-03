@@ -1,3 +1,5 @@
+import pytest
+
 from alfa.db import CashLedger, CurrencyType, Portfolio, Stock, TransactionType
 from alfa.util import get_current_utc_timestamp
 
@@ -38,6 +40,63 @@ def test_start_watching(setup_database):
     # Add stock that is not in stocks to watchlist
     added = portfolio.start_watching("TSLA")
     assert added is True
+
+
+def test_start_watching_with_invalid_param(setup_database):
+    # Create portfolio
+    portfolio = Portfolio.add_portfolio("__theta__", CurrencyType.USD)
+    assert portfolio is not None
+
+    # None
+    is_watching = portfolio.start_watching(None)
+    assert not is_watching
+
+    # Non-string
+    is_watching = portfolio.start_watching(2)
+    assert not is_watching
+
+    # Empty string
+    is_watching = portfolio.start_watching("")
+    assert not is_watching
+
+
+def test_stop_watching_with_invalid_param(setup_database):
+    # Create portfolio
+    portfolio = Portfolio.add_portfolio("__theta__", CurrencyType.USD)
+    assert portfolio is not None
+
+    # None
+    is_watching = portfolio.stop_watching(None)
+    assert not is_watching
+
+    # Non-string
+    is_watching = portfolio.stop_watching(2)
+    assert not is_watching
+
+    # Empty string
+    is_watching = portfolio.stop_watching("")
+    assert not is_watching
+
+
+def test_is_watching_with_invalid_param(setup_database):
+    # Create portfolio
+    portfolio = Portfolio.add_portfolio("__theta__", CurrencyType.USD)
+    assert portfolio is not None
+
+    with pytest.raises(ValueError) as xcpt:
+        # None
+        portfolio.is_watching(None)
+    assert str(xcpt.value) == "Symbol must be a non-empty string."
+
+    with pytest.raises(ValueError) as xcpt:
+        # Non-string
+        portfolio.is_watching(2)
+    assert str(xcpt.value) == "Symbol must be a non-empty string."
+
+    with pytest.raises(ValueError) as xcpt:
+        # Empty string
+        portfolio.is_watching("")
+    assert str(xcpt.value) == "Symbol must be a non-empty string."
 
 
 def test_stop_watching(setup_database):

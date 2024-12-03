@@ -1,7 +1,7 @@
 import random
 
 from alfa.db import BaseModel, Portfolio, open_db
-from alfa.util import get_current_utc_timestamp
+from alfa.utils import get_current_utc_timestamp
 
 if __name__ == "__main__":
 

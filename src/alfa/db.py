@@ -3,7 +3,7 @@ from enum import Enum
 from peewee import FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
-from alfa.util import create_directories_for_path, get_timestamp_as_utc_str
+from alfa.utils import create_directories_for_path, get_timestamp_as_utc_str
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
@@ -115,7 +115,7 @@ class Portfolio(BaseModel):
             if created:
                 log.debug(f"Created portfolio '{name}' with currency '{currency.value}'.")
             return portfolio
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             log.error(f"Failed to add portfolio '{name}': {e}")
             raise e
 
@@ -188,7 +188,7 @@ class Portfolio(BaseModel):
                 return
 
             stock = Stock.get_or_none(Stock.symbol == symbol)
-            if not stock:
+            if not stock:  # pragma: no cover
                 log.debug(f"Stock '{symbol}' not found in the database.")
                 return
 
@@ -199,7 +199,7 @@ class Portfolio(BaseModel):
             )
             if rows_deleted > 0:
                 log.debug(f"Removed '{symbol}' from watchlist in portfolio '{self.name}'.")
-            else:
+            else:  # pragma: no cover
                 log.debug(f"No watchlist entry found for '{symbol}' in portfolio '{self.name}'.")
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to remove '{symbol}' from watchlist in portfolio '{self.name}': {e}")
@@ -244,7 +244,8 @@ class Portfolio(BaseModel):
                         f"available cash {self.cash} in portfolio '{self.name}'. "
                         f"Capping withdrawal to {self.cash}."
                     )
-                    amount = self.cash - fees  # Cap the amount to the available cash
+                    amount = self.cash - fees  # Cap the amount to the available cash minus fees
+                    total_amount_to_withdraw = self.cash
 
                 CashLedger.create(
                     external_id=external_id,

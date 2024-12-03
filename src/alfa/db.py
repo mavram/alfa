@@ -585,11 +585,6 @@ class TransactionLedger(BaseModel):
 
 """
 
-CREATE TABLE IF NOT EXISTS last_processed_batch (
-    location TEXT PRIMARY KEY,
-    batch NOT NULL UNIQUE
-    );
-
 CREATE TABLE IF NOT EXISTS end_of_day_position (
     id INTEGER PRIMARY KEY,
     portfolio_id INTEGER,
@@ -601,16 +596,9 @@ CREATE TABLE IF NOT EXISTS end_of_day_position (
     FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
     FOREIGN KEY (stock_id) REFERENCES stock (id)
     );
+"""
 
-
-class OldPortfolio:
-    def get_positions(self):
-        return list(self.positions.keys())
-
-    def get_position_size(self, symbol):
-        symbol = symbol.upper()
-        return 0 if symbol not in self.positions else self.positions[symbol]["size"]
-
+"""
     def sell(self, symbol, qty, price):
         symbol = symbol.upper()
         if self.get_position_size(symbol) == 0:
@@ -687,7 +675,5 @@ class OldPortfolio:
         #        (including symbols from transactions)
         # j) Update eod positions: if doesn't exist add, if exists update with delta
         #        (Assume that transactions will not be applied retroactively)
-        # k) ...TODO
-        pass
 
 """

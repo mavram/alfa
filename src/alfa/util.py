@@ -19,9 +19,19 @@ def create_directories_for_path(path):
 
 def get_current_utc_timestamp():
     """
-    Returns the current UTC timestamp as an integer.
+    Returns the current UTC timestamp as integer.
 
     Returns:
         int: The number of seconds since the Unix Epoch (January 1, 1970) in UTC.
     """
     return int(datetime.now(timezone.utc).timestamp())
+
+
+def get_timestamp_as_utc_str(timestamp):
+    """
+    Returns the string representation of given Unix timestamp in UTC
+
+    Returns:
+        str: UTC string representation of given unix timestamp
+    """
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)

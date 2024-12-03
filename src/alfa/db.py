@@ -3,7 +3,7 @@ from enum import Enum
 from peewee import FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
-from alfa.util import create_directories_for_path
+from alfa.util import create_directories_for_path, get_timestamp_as_utc_str
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
@@ -106,7 +106,9 @@ class Stock(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(f"Price for symbol {self.symbol} on {timestamp} was successfully added.")
+            log.debug(
+                f"Price for symbol {self.symbol} on {get_timestamp_as_utc_str(timestamp)} was successfully added."
+            )
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Error adding price for {self.symbol}. {e}")
@@ -221,6 +223,21 @@ class Portfolio(BaseModel):
         )
         return query.exists()
 
+    def _get_position(self, symbol):
+        """
+        Retrieves the current Position for the given stock symbol.
+
+        Args:
+            symbol (str): The stock symbol.
+
+        Returns:
+            Position or None: The Position object if it exists, else None.
+        """
+        symbol = symbol.upper()
+        return Position.get_or_none(
+            (Position.portfolio == self) & (Position.stock == Stock.get(Stock.symbol == symbol))
+        )
+
     def start_watching(self, symbol, name=None):
         """
         Adds a stock to the watchlist for the current portfolio.
@@ -276,6 +293,12 @@ class Portfolio(BaseModel):
             if not stock:
                 log.debug(f"Stock {symbol} not found.")
                 return False
+
+            # Check if portfolio has an active position
+            if self._get_position(symbol):
+                log.debug(f"Cannot stop watching symbol {symbol} with an active postion.")
+                return False
+
             # Delete the StockToWatch entry
             query = StockToWatch.delete().where(
                 (StockToWatch.stock == stock) & (StockToWatch.portfolio == self)
@@ -373,6 +396,49 @@ class Portfolio(BaseModel):
             log.error(f"Failed to withdraw {amount} from portfolio {self.name}. {e}")
             return False
 
+    def _create_or_update_position(self, symbol, quantity, price):
+        """
+        Creates a new Position or updates an existing one.
+
+        Args:
+            symbol (str): The stock symbol.
+            quantity (int): The number of shares to add or remove.
+            price (float): The price per share for averaging.
+
+        Returns:
+            Position: The updated or created Position object.
+        """
+        symbol = symbol.upper()
+        stock = Stock.get(Stock.symbol == symbol)
+
+        position, created = Position.get_or_create(
+            portfolio=self, stock=stock, defaults={"size": 0, "average_price": 0.0}
+        )
+
+        if created:
+            log.debug(f"Created new position for {symbol} in portfolio {self.name}.")
+
+        # Update size and average price
+        new_size = position.size + quantity
+        if new_size < 0:
+            raise ValueError(
+                f"Insufficient shares to remove. Current size: {position.size}, Attempted removal: {-quantity}"
+            )
+
+        if quantity > 0:
+            # Calculate new average price
+            total_cost = position.average_price * position.size + price * quantity
+            position.average_price = total_cost / new_size if new_size > 0 else 0.0
+
+        position.size = new_size
+        position.save()
+
+        log.debug(
+            f"Updated position for {symbol} in portfolio {self.name}:"
+            f"Size={position.size}, Average Price={position.average_price}"
+        )
+        return position
+
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         """
         Buys a specified quantity of a stock, updates cash balance, and records the transaction.
@@ -411,9 +477,10 @@ class Portfolio(BaseModel):
                     return False
                 stock = Stock.get(symbol=symbol)
 
-                # TODO: update position
+                # Update position
+                self.create_or_update_position(symbol, quantity, price)
 
-                # Record the transaction
+                # Record the transaction (last)
                 TransactionLedger.create(
                     external_id=external_id,
                     portfolio=self,
@@ -460,9 +527,10 @@ class Portfolio(BaseModel):
                     return False
                 stock = Stock.get(symbol=symbol)
 
-                # TODO: update position
+                # Update position
+                self._create_or_update_position(symbol, quantity, cost_basis_per_share)
 
-                # Record the transaction
+                # Record the transaction (last)
                 TransactionLedger.create(
                     external_id=external_id,
                     portfolio=self,
@@ -506,21 +574,34 @@ class Portfolio(BaseModel):
             symbol = symbol.upper()
 
             with db.atomic():
-                if not self.is_watching(symbol):
-                    log.error(f"{self.name} is not owning stock {symbol.upper()}.")
+                position = self.get_position(symbol)
+                if not position or position.size <= 0:
+                    log.error(f"Portfolio {self.name} has no position in {symbol}.")
                     return False
-                stock = Stock.get(symbol=symbol)
 
-                # TODO: update position and stop watching is liquidating sell
+                if quantity > position.size:
+                    log.info(
+                        f"Requested quantity {quantity} exceeds position size {position.size} in {symbol}. "
+                        f"Capping to {position.size}."
+                    )
+                    quantity = position.size
 
-                # Calculate total proceeds
                 total_proceeds = quantity * price - fees
 
                 # Update cash balance
                 self.cash += total_proceeds
                 self.save()
 
-                # Record the transaction
+                # Update position
+                self._create_or_update_position(symbol, -quantity, price)
+
+                # Optionally, stop watching if position size is zero
+                if position.size - quantity == 0:
+                    if not self.stop_watching(symbol):
+                        log.warning(f"Failed to stop watching {symbol} despite zero position.")
+
+                # Record the transaction (last)
+                stock = Stock.get(symbol=symbol)
                 TransactionLedger.create(
                     external_id=external_id,
                     portfolio=self,
@@ -581,6 +662,18 @@ class TransactionLedger(BaseModel):
     class Meta:
         table_name = "transaction_ledger"
         indexes = ((("external_id",), True),)
+
+
+class Position(BaseModel):
+    id = IntegerField(primary_key=True)
+    portfolio = ForeignKeyField(Portfolio, backref="positions", on_delete="CASCADE")
+    stock = ForeignKeyField(Stock, on_delete="CASCADE")
+    size = IntegerField()
+    average_price = FloatField()
+
+    class Meta:
+        table_name = "position"
+        indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
 
 
 """

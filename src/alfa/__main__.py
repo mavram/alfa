@@ -88,4 +88,10 @@ if __name__ == "__main__":
     print(f"At the end {p.name} has {len(p.cash_ledger)} cash ledger entries.")
     print(f"At the end {p.name} has {len(p.transaction_ledger)} transaction ledger entries.")
 
+    positions = p.positions
+    for position in positions:
+        print(
+            f"At the end {p.name} has position: symbol {position.stock.symbol}, {position.size}, {position.average_price}"
+        )
+
     db.close()

@@ -188,10 +188,6 @@ class Portfolio(BaseModel):
                 return
 
             stock = Stock.get_or_none(Stock.symbol == symbol)
-            if not stock:  # pragma: no cover
-                log.debug(f"Stock '{symbol}' not found in the database.")
-                return
-
             rows_deleted = (
                 StockToWatch.delete()
                 .where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self))

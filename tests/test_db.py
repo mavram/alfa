@@ -184,6 +184,12 @@ def test_stop_watching(test_db):
     )
 
 
+def test_stop_watching_unknown_stock(test_db):
+    portfolio = Portfolio.create(name="Portfolio", currency="USD")
+    portfolio.stop_watching("AAPL")
+    assert True
+
+
 def test_deposit(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=1000.0)
     portfolio.deposit(external_id="dep1", timestamp=1638316800, amount=500.0, fees=10.0)

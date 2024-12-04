@@ -509,15 +509,12 @@ class Position(BaseModel):
         indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
 
 
-# a) Get last processed transactions batch. Batch name is epoch.
-# b) Load all the json files from the location with names more recent than last processed.
-# c) For each file
-# d) For each transaction dynamically invoke buy/sell/deposit/deposit_stock/withdraw
-# e) If stock not in stocks add there first
-# f) Inserts are idempotent
-# g) Respective methods will add an entry to the database for the transaction (not in eod position)
-# h) Once file completed update last processed batch for the location
-# i) Once all files are processed get all stock prices since last price in db
-#        (including symbols from transactions)
-# j) Update eod positions: if doesn't exist add, if exists update with delta
-#        (Assume that transactions will not be applied retroactively)
+"""
+TODO:
+[] end-of-day balance
+[] end-of-day positions
+[] repo of deposits and withdraws
+[] repo of transactions
+[] batch processor
+
+"""

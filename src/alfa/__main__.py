@@ -37,7 +37,6 @@ if __name__ == "__main__":
 
         for dw in portfolio.deposits_and_withdraws:
             print(f"{portfolio.name}: amount: {dw.amount}, type: {dw.type}")
-
         for t in portfolio.transactions:
             print(
                 f"{portfolio.name}: stock: {t.stock.symbol}, quantity: {t.quantity}, price: {t.price}, type: {t.type}"
@@ -49,8 +48,10 @@ if __name__ == "__main__":
 
         portfolio.stop_watching("AAPL")
         portfolio.stop_watching("MSFT")
+
         watchlist = portfolio.get_watchlist()
         print(f"Portfolio {portfolio.name} watchlist: {[s.symbol for s in watchlist]}")
+
         print(f"Portfolio {portfolio.name} cash balance is {portfolio.cash} {portfolio.currency}")
 
         db.close()

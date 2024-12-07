@@ -317,8 +317,6 @@ def test_sell_quantity_exceeds_position_size(test_db):
             fees=5.0,
         )
 
-
-
     # Re-fetch the Portfolio to verify the cash balance
     portfolio = Portfolio.get_by_id(portfolio.id)
     assert portfolio.cash == 1000.0, f"Expected cash balance to be $1000.00, got ${portfolio.cash}"

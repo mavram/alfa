@@ -221,7 +221,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._create_or_update_cash_balance(total_amount_to_deposit)
+                self._update_cash_balance(total_amount_to_deposit)
 
             log.info(f"Deposited {amount} {self.currency} into portfolio '{self.name}'.")
             return self
@@ -245,7 +245,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._create_or_update_cash_balance(-total_amount_to_withdraw)
+                self._update_cash_balance(-total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} {self.currency} from portfolio '{self.name}'.")
             return self
@@ -253,9 +253,19 @@ class Portfolio(BaseModel):
             log.error(f"Failed to withdraw {amount} {self.currency} from portfolio '{self.name}': {e}")
             raise e
 
-    def _create_or_update_cash_balance(self, amount):
-        self.cash += amount
-        self.save()
+    def _update_cash_balance(self, amount):
+        try:
+            self.cash += amount
+            self.save()
+
+            log.debug(
+                f"Updated cash balance in portfolio '{self.name}': "
+                f"Original Cash={(self.cash - amount):.2f}, Current Cash={self.cash:.2f}"
+            )
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to update cash balance in portfolio '{self.name}': {e}")
+            raise e
+
 
     def _create_or_update_position(self, symbol, quantity, price):
         try:
@@ -313,7 +323,7 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance
-                self._create_or_update_cash_balance(-total_cost)
+                self._update_cash_balance(-total_cost)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
@@ -360,7 +370,7 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance to cover fees
-                self._create_or_update_cash_balance(-total_fees)
+                self._update_cash_balance(-total_fees)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
@@ -408,7 +418,7 @@ class Portfolio(BaseModel):
                 total_proceeds = quantity * price - fees
 
                 # Update cash balance
-                self._create_or_update_cash_balance(total_proceeds)
+                self._update_cash_balance(total_proceeds)
 
                 # Update position
                 position = self._create_or_update_position(symbol, -quantity, price)

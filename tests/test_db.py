@@ -213,24 +213,11 @@ def test_withdraw_exceeds_balance(test_db):
     portfolio = Portfolio.create(name="Test Portfolio", currency="USD", cash=1000.0)
 
     # Attempt to withdraw $900.00 with $200.00 in fees, totaling $1,100.00
-    portfolio.withdraw(external_id="wd_exceed1", timestamp=1638316800, amount=900.0, fees=200.0)
+    with pytest.raises(ValueError):
+        portfolio.withdraw(external_id="wd_exceed1", timestamp=1638316800, amount=900.0, fees=200.0)
 
     # Assert that the cash balance is now $0.00
-    assert portfolio.cash == 0.0, f"Expected cash balance to be $0.00, got ${portfolio.cash}"
-
-    # Retrieve the CashLedger entry for the withdrawal
-    ledger = CashLedger.get(CashLedger.external_id == "wd_exceed1")
-
-    # Assert that the ledger amount is -$800.00 (withdrawn amount)
-    assert ledger.amount == -800.0, f"Expected ledger amount to be -$800.00, got ${ledger.amount}"
-
-    # Assert that the ledger type is 'WITHDRAW'
-    assert (
-        ledger.type == TransactionType.WITHDRAW.value
-    ), f"Expected ledger type to be '{TransactionType.WITHDRAW.value}', got '{ledger.type}'"
-
-    # Optional: Assert that the fees are correctly recorded
-    assert ledger.fees == 200.0, f"Expected ledger fees to be '200.0', got '{ledger.fees}'"
+    assert portfolio.cash == 1000.0, f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
 
 
 def test_buy_insufficient_cash(test_db):

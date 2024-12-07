@@ -221,8 +221,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self.cash += total_amount_to_deposit
-                self.save()
+                self._create_or_update_balance(total_amount_to_deposit)
 
             log.info(f"Deposited {amount} {self.currency} into portfolio '{self.name}'.")
             return self
@@ -235,13 +234,7 @@ class Portfolio(BaseModel):
             with db.atomic():
                 total_amount_to_withdraw = amount + fees
                 if total_amount_to_withdraw > self.cash:
-                    log.info(
-                        f"Withdrawal amount {amount} and fees {fees} exceeds "
-                        f"available cash {self.cash} in portfolio '{self.name}'. "
-                        f"Capping withdrawal to {self.cash}."
-                    )
-                    amount = self.cash - fees  # Cap the amount to the available cash minus fees
-                    total_amount_to_withdraw = self.cash
+                    raise ValueError(f"Withdrawal amount {amount} and fees {fees} exceeds vailable cash {self.cash} in portfolio '{self.name}'.")
 
                 CashLedger.create(
                     external_id=external_id,
@@ -252,14 +245,17 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self.cash -= total_amount_to_withdraw
-                self.save()
+                self._create_or_update_balance(-total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} {self.currency} from portfolio '{self.name}'.")
             return self
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to withdraw {amount} {self.currency} from portfolio '{self.name}': {e}")
             raise e
+
+    def _create_or_update_balance(self, amount):
+        self.cash += amount
+        self.save()
 
     def _create_or_update_position(self, symbol, quantity, price):
         try:

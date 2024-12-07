@@ -221,7 +221,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._create_or_update_balance(total_amount_to_deposit)
+                self._create_or_update_cash_balance(total_amount_to_deposit)
 
             log.info(f"Deposited {amount} {self.currency} into portfolio '{self.name}'.")
             return self
@@ -245,7 +245,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._create_or_update_balance(-total_amount_to_withdraw)
+                self._create_or_update_cash_balance(-total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} {self.currency} from portfolio '{self.name}'.")
             return self
@@ -253,7 +253,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to withdraw {amount} {self.currency} from portfolio '{self.name}': {e}")
             raise e
 
-    def _create_or_update_balance(self, amount):
+    def _create_or_update_cash_balance(self, amount):
         self.cash += amount
         self.save()
 
@@ -313,8 +313,7 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance
-                self.cash -= total_cost
-                self.save()
+                self._create_or_update_cash_balance(-total_cost)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
@@ -361,8 +360,7 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance to cover fees
-                self.cash -= total_fees
-                self.save()
+                self._create_or_update_cash_balance(-total_fees)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
@@ -405,18 +403,12 @@ class Portfolio(BaseModel):
                     raise ValueError(f"No active position in '{symbol}' to sell.")
 
                 if quantity > position.size:
-                    log.info(
-                        f"Requested to sell {quantity} shares of '{symbol}' "
-                        f"exceeds current position of {position.size} shares. "
-                        f"Capping sale to {position.size} shares."
-                    )
-                    quantity = position.size
+                    raise ValueError(f"Requested to sell {quantity} shares of '{symbol}' exceeds current position of {position.size} shares.")
 
                 total_proceeds = quantity * price - fees
 
                 # Update cash balance
-                self.cash += total_proceeds
-                self.save()
+                self._create_or_update_cash_balance(total_proceeds)
 
                 # Update position
                 position = self._create_or_update_position(symbol, -quantity, price)

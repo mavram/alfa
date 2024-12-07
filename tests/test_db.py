@@ -307,50 +307,21 @@ def test_sell_quantity_exceeds_position_size(test_db):
     StockToWatch.create(portfolio=portfolio, stock=stock)
 
     # Attempt to sell 10 shares of "AAPL" with a price of $55.00 per share and $5.00 in fees
-    portfolio.sell(
-        external_id="sell_exceed1",
-        timestamp=1638316800,  # Example Unix timestamp
-        symbol="AAPL",
-        quantity=10,  # Quantity exceeds position size (5)
-        price=55.0,
-        fees=5.0,
-    )
+    with pytest.raises(ValueError):
+        portfolio.sell(
+            external_id="sell_exceed1",
+            timestamp=1638316800,  # Example Unix timestamp
+            symbol="AAPL",
+            quantity=10,  # Quantity exceeds position size (5)
+            price=55.0,
+            fees=5.0,
+        )
 
-    # Re-fetch the Portfolio to get the updated cash balance
+
+
+    # Re-fetch the Portfolio to verify the cash balance
     portfolio = Portfolio.get_by_id(portfolio.id)
-
-    # Calculate expected cash update:
-    # Capped Quantity = 5 shares
-    # Total Proceeds = (5 * $55.00) - $5.00 = $275.00 - $5.00 = $270.00
-    # New Cash Balance = $1,000.00 + $270.00 = $1,270.00
-    assert portfolio.cash == 1270.0, f"Expected cash balance to be $1270.00, got ${portfolio.cash}"
-
-    # Assert that the Position for "AAPL" has been deleted (size capped to 5 and position removed)
-    with pytest.raises(Position.DoesNotExist):
-        Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
-
-    # Assert that "AAPL" has been removed from the Portfolio's watchlist since the position is liquidated
-    assert (
-        not StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    ), "Expected 'AAPL' to be removed from the watchlist after selling all shares."
-
-    # Retrieve the TransactionLedger entry for the sell transaction
-    transaction = TransactionLedger.get(TransactionLedger.external_id == "sell_exceed1")
-
-    # Assert that the transaction has the correct details
-    assert (
-        transaction.quantity == -5
-    ), f"Expected transaction quantity to be -5, got {transaction.quantity}"
-    assert transaction.price == 55.0, f"Expected transaction price to be $55.00, got ${transaction.price}"
-    assert (
-        transaction.type == TransactionType.SELL.value
-    ), f"Expected transaction type to be '{TransactionType.SELL.value}', got '{transaction.type}'"
-    assert transaction.fees == 5.0, f"Expected transaction fees to be $5.00, got ${transaction.fees}"
-    assert (
-        transaction.timestamp == 1638316800
-    ), f"Expected transaction timestamp to be '1638316800', got '{transaction.timestamp}'"
+    assert portfolio.cash == 1000.0, f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
 
 
 def test_deposit_in_kind_insufficient_cash(test_db):

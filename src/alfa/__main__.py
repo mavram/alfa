@@ -38,13 +38,9 @@ if __name__ == "__main__":
         for dw in portfolio.deposits_and_withdraws:
             print(f"{portfolio.name}: amount: {dw.amount}, type: {dw.type}")
         for t in portfolio.transactions:
-            print(
-                f"{portfolio.name}: stock: {t.stock.symbol}, quantity: {t.quantity}, price: {t.price}, type: {t.type}"
-            )
+            print(f"{portfolio.name}: stock: {t.stock.symbol}, quantity: {t.quantity}, price: {t.price}, type: {t.type}")
         for p in portfolio.positions:
-            print(
-                f"{portfolio.name}: stock: {p.stock.symbol}, size: {p.size}, average_price: {p.average_price}"
-            )
+            print(f"{portfolio.name}: stock: {p.stock.symbol}, size: {p.size}, average_price: {p.average_price}")
 
         portfolio.stop_watching("AAPL")
         portfolio.stop_watching("MSFT")
@@ -53,6 +49,18 @@ if __name__ == "__main__":
         print(f"Portfolio {portfolio.name} watchlist: {[s.symbol for s in watchlist]}")
 
         print(f"Portfolio {portfolio.name} cash balance is {portfolio.cash} {portfolio.currency}")
+
+        portfolio.calculate_eod_balance()
+        most_recent_eod_balance = portfolio.get_most_recent_eod_balance()
+        print(f"Portfolio {portfolio.name}'s most recent end of day balance is {most_recent_eod_balance}")
+
+        symbol = "MSFT"
+        portfolio.calculate_eod_position(symbol)
+        most_recent_eod_position = portfolio.get_most_recent_eod_position(symbol)
+
+        symbol = "TSLA"
+        portfolio.calculate_eod_position(symbol)
+        most_recent_eod_position = portfolio.get_most_recent_eod_position(symbol)
 
         db.close()
     except Exception as e:

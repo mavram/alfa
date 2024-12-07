@@ -27,7 +27,20 @@ def get_current_utc_timestamp():
     return int(datetime.now(timezone.utc).timestamp())
 
 
-def get_timestamp_as_utc_str(timestamp):
+def get_current_utc_date():
+    """
+    Get the current date in UTC.
+
+    This method retrieves the current date based on Coordinated Universal Time (UTC).
+    It ensures that the returned date is not influenced by the local system timezone.
+
+    Returns:
+        datetime.date: The current date in UTC.
+    """
+    return datetime.now(timezone.utc).date()
+
+
+def get_timestamp_as_str(timestamp):
     """
     Returns the string representation of given Unix timestamp in UTC
 
@@ -35,3 +48,19 @@ def get_timestamp_as_utc_str(timestamp):
         str: UTC string representation of given unix timestamp
     """
     return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+
+def get_date_from_timestamp(timestamp):
+    """
+    Convert an epoch timestamp to a date in UTC.
+
+    This function takes an epoch timestamp (seconds since 1970-01-01 00:00:00 UTC)
+    and converts it into a date object in UTC.
+
+    Args:
+        epoch_timestamp (int or float): The epoch timestamp to convert.
+
+    Returns:
+        datetime.date: The corresponding date in UTC.
+    """
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).date()

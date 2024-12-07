@@ -3,7 +3,7 @@ from enum import Enum
 from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
-from alfa.utils import create_directories_for_path, get_timestamp_as_utc_str
+from alfa.utils import create_directories_for_path, get_current_utc_date, get_timestamp_as_str
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
@@ -41,7 +41,7 @@ class Stock(BaseModel):
         try:
             price = self.prices.order_by(Price.timestamp.desc()).first()
             if price:
-                log.debug(f"{self.symbol}'s most recent price is from {get_timestamp_as_utc_str(price.timestamp)}.")
+                log.debug(f"{self.symbol}'s most recent price is from {get_timestamp_as_str(price.timestamp)}.")
             else:
                 log.debug(f"{self.symbol} has no price records.")
             return price
@@ -65,7 +65,7 @@ class Stock(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(f"Added price for {self.symbol} on {get_timestamp_as_utc_str(timestamp)} successfully.")
+            log.debug(f"Added price for {self.symbol} on {get_timestamp_as_str(timestamp)} successfully.")
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Error adding price for {self.symbol}: {e}")
@@ -429,6 +429,85 @@ class Portfolio(BaseModel):
             log.error(f"Failed to sell {quantity} shares of '{symbol}' at ${price:.2f}: {e}")
             raise e
 
+    def get_most_recent_eod_balance(self):
+        try:
+            eod_balance = self.eod_balances.order_by(EndOfDayBalance.date.desc()).first()
+            if eod_balance:
+                log.debug(f"Portfolio {self.name}'s most recent end of day balance is from {eod_balance.date}.")
+            else:
+                log.debug(f"Portfolio {self.name} has no end of day balances.")
+            return eod_balance
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to retrieve the most recent end of day balance for {self.name}: {e}")
+            raise e
+
+    def calculate_eod_balance(self, date=None):
+        if not date:
+            date = get_current_utc_date()
+
+        try:
+            eod_balance, created = EndOfDayBalance.get_or_create(portfolio=self, defaults={"date": date, "balance": self.cash})
+
+            if created:
+                log.debug(f"Created {date} end of day balance for portfolio '{self.name}'.")
+
+            eod_balance.balance = self.cash
+            eod_balance.save()
+
+            log.debug(f"Updated {date} end of day balance for portfolio '{self.name}': " f"Balance={eod_balance.balance:.2f}")
+        except Exception as e:
+            log.error(f"Failed to calculate end of day balance for '{date}' in portfolio '{self.name}': {e}")
+            raise e
+
+    def get_most_recent_eod_position(self, symbol):
+        try:
+            symbol = _as_validated_symbol(symbol)
+
+            eod_position = (
+                self.eod_positions.join(Stock).where(Stock.symbol == symbol).order_by(EndOfDayPosition.date.desc()).first()
+            )
+            if eod_position:
+                log.debug(f"Portfolio {self.name}'s most recent end of day position for {symbol} is from {eod_position.date}.")
+            else:
+                log.debug(f"Portfolio {self.name} has no end of day positions for {symbol}.")
+            return eod_position
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to retrieve the most recent end of day position for {symbol} in portfolio '{self.name}': {e}")
+            raise e
+
+    def calculate_eod_position(self, symbol, date=None):
+        if not date:
+            date = get_current_utc_date()
+
+        try:
+            symbol = _as_validated_symbol(symbol)
+
+            position = self.get_position(symbol)
+            if not position:
+                log.debug(f"Portfolio {self.name} has no position in {symbol}.")
+                return
+
+            eod_position, created = EndOfDayPosition.get_or_create(
+                portfolio=self,
+                stock=position.stock,
+                defaults={"date": date, "size": position.size, "average_price": position.average_price, "market_price": 0.0},
+            )
+
+            if created:
+                log.debug(f"Created '{date}' end of day position for '{symbol}' in portfolio '{self.name}'.")
+
+            eod_position.average_price = position.average_price
+            eod_position.market_price = position.average_price + 3  # TODO: update based on the price that day
+            eod_position.save()
+
+            log.debug(
+                f"Updated '{date}' end of day position for '{symbol}' in portfolio '{self.name}': "
+                f"Avergage Price={eod_position.average_price:.2f}. Market Price={eod_position.market_price:.2f}"
+            )
+        except Exception as e:
+            log.error(f"Failed to calculate '{date}' end of day position for '{symbol}' in portfolio '{self.name}': {e}")
+            raise e
+
 
 class StockToWatch(BaseModel):
     id = IntegerField(primary_key=True)
@@ -504,9 +583,9 @@ class EndOfDayPosition(BaseModel):
     portfolio = ForeignKeyField(Portfolio, backref="eod_positions", on_delete="CASCADE")
     stock = ForeignKeyField(Stock, on_delete="CASCADE")
     date = DateField()
-    quantity = IntegerField()
+    size = IntegerField()
     average_price = FloatField()
-    market_value = FloatField()
+    market_price = FloatField()
 
     class Meta:
         table_name = "eod_position"

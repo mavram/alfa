@@ -1,6 +1,6 @@
 from enum import Enum
 
-from peewee import FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
 from alfa.utils import create_directories_for_path, get_timestamp_as_utc_str
@@ -41,9 +41,7 @@ class Stock(BaseModel):
         try:
             price = self.prices.order_by(Price.timestamp.desc()).first()
             if price:
-                log.debug(
-                    f"{self.symbol}'s most recent price is from {get_timestamp_as_utc_str(price.timestamp)}."
-                )
+                log.debug(f"{self.symbol}'s most recent price is from {get_timestamp_as_utc_str(price.timestamp)}.")
             else:
                 log.debug(f"{self.symbol} has no price records.")
             return price
@@ -67,9 +65,7 @@ class Stock(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(
-                f"Added price for {self.symbol} on {get_timestamp_as_utc_str(timestamp)} successfully."
-            )
+            log.debug(f"Added price for {self.symbol} on {get_timestamp_as_utc_str(timestamp)} successfully.")
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Error adding price for {self.symbol}: {e}")
@@ -131,11 +127,7 @@ class Portfolio(BaseModel):
         try:
             symbol = _as_validated_symbol(symbol)
 
-            query = (
-                StockToWatch.select()
-                .join(Stock)
-                .where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
-            )
+            query = StockToWatch.select().join(Stock).where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
             return query.exists()
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to check watchlist for '{symbol}' in portfolio '{self.name}': {e}")
@@ -182,16 +174,12 @@ class Portfolio(BaseModel):
                 return
 
             if self.get_position(symbol):
-                log.debug(
-                    f"Cannot remove '{symbol}' from watchlist in portfolio '{self.name}' due to active position."
-                )
+                log.debug(f"Cannot remove '{symbol}' from watchlist in portfolio '{self.name}' due to active position.")
                 return
 
             stock = Stock.get_or_none(Stock.symbol == symbol)
             rows_deleted = (
-                StockToWatch.delete()
-                .where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self))
-                .execute()
+                StockToWatch.delete().where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self)).execute()
             )
             if rows_deleted > 0:
                 log.debug(f"Removed '{symbol}' from watchlist in portfolio '{self.name}'.")
@@ -234,7 +222,10 @@ class Portfolio(BaseModel):
             with db.atomic():
                 total_amount_to_withdraw = amount + fees
                 if total_amount_to_withdraw > self.cash:
-                    raise ValueError(f"Withdrawal amount {amount} and fees {fees} exceeds vailable cash {self.cash} in portfolio '{self.name}'.")
+                    raise ValueError(
+                        f"Withdrawal amount {amount} and fees {fees} "
+                        f"exceeds available cash {self.cash} in portfolio '{self.name}'."
+                    )
 
                 CashLedger.create(
                     external_id=external_id,
@@ -266,22 +257,17 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio '{self.name}': {e}")
             raise e
 
-
     def _create_or_update_position(self, symbol, quantity, price):
         try:
             stock = Stock.get(Stock.symbol == symbol)
-            position, created = Position.get_or_create(
-                portfolio=self, stock=stock, defaults={"size": 0, "average_price": 0.0}
-            )
+            position, created = Position.get_or_create(portfolio=self, stock=stock, defaults={"size": 0, "average_price": 0.0})
 
             if created:
                 log.debug(f"Created new position for '{symbol}' in portfolio '{self.name}'.")
 
             new_size = position.size + quantity
             if new_size < 0:
-                raise ValueError(
-                    f"Cannot remove {abs(quantity)} shares from '{symbol}'; only {position.size} available."
-                )
+                raise ValueError(f"Cannot remove {abs(quantity)} shares from '{symbol}'; only {position.size} available.")
 
             if new_size == 0:
                 log.debug(f"Liquidating position for '{symbol}' in portfolio '{self.name}'.")
@@ -302,9 +288,7 @@ class Portfolio(BaseModel):
 
             return position
         except Exception as e:
-            log.error(
-                f"Failed to create or update position for '{symbol}' in portfolio '{self.name}': {e}"
-            )
+            log.error(f"Failed to create or update position for '{symbol}' in portfolio '{self.name}': {e}")
             raise e
 
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
@@ -391,15 +375,10 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-            log.info(
-                f"Deposited {quantity} shares of '{symbol}' at ${cost_basis_per_share:.2f} each. "
-                f"Fees: ${fees:.2f}."
-            )
+            log.info(f"Deposited {quantity} shares of '{symbol}' at ${cost_basis_per_share:.2f} each. " f"Fees: ${fees:.2f}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(
-                f"Failed to deposit {quantity} shares of '{symbol}' at ${cost_basis_per_share:.2f}: {e}"
-            )
+            log.error(f"Failed to deposit {quantity} shares of '{symbol}' at ${cost_basis_per_share:.2f}: {e}")
             raise e
 
     def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
@@ -413,7 +392,9 @@ class Portfolio(BaseModel):
                     raise ValueError(f"No active position in '{symbol}' to sell.")
 
                 if quantity > position.size:
-                    raise ValueError(f"Requested to sell {quantity} shares of '{symbol}' exceeds current position of {position.size} shares.")
+                    raise ValueError(
+                        f"Request to sell {quantity} shares of '{symbol}' exceeds current position of {position.size} shares."
+                    )
 
                 total_proceeds = quantity * price - fees
 
@@ -505,6 +486,31 @@ class Position(BaseModel):
     class Meta:
         table_name = "position"
         indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
+
+
+class EndOfDayBalance(BaseModel):
+    id = IntegerField(primary_key=True)
+    portfolio = ForeignKeyField(Portfolio, backref="eod_balances", on_delete="CASCADE")
+    date = DateField()
+    balance = FloatField()
+
+    class Meta:
+        table_name = "eod_balance"
+        indexes = ((("portfolio", "date"), True),)  # Unique constraint on portfolio and date
+
+
+class EndOfDayPosition(BaseModel):
+    id = IntegerField(primary_key=True)
+    portfolio = ForeignKeyField(Portfolio, backref="eod_positions", on_delete="CASCADE")
+    stock = ForeignKeyField(Stock, on_delete="CASCADE")
+    date = DateField()
+    quantity = IntegerField()
+    average_price = FloatField()
+    market_value = FloatField()
+
+    class Meta:
+        table_name = "eod_position"
+        indexes = ((("portfolio", "stock", "date"), True),)  # Unique constraint on portfolio, stock, and date
 
 
 """

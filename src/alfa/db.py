@@ -446,7 +446,7 @@ class Portfolio(BaseModel):
             date = get_current_utc_date()
 
         try:
-            eod_balance, created = EndOfDayBalance.get_or_create(portfolio=self, defaults={"date": date, "balance": self.cash})
+            eod_balance, created = EndOfDayBalance.get_or_create(portfolio=self, date=date, defaults={"balance": self.cash})
 
             if created:
                 log.debug(f"Created {date} end of day balance for portfolio '{self.name}'.")
@@ -490,7 +490,8 @@ class Portfolio(BaseModel):
             eod_position, created = EndOfDayPosition.get_or_create(
                 portfolio=self,
                 stock=position.stock,
-                defaults={"date": date, "size": position.size, "average_price": position.average_price, "market_price": 0.0},
+                date=date,
+                defaults={"size": position.size, "average_price": position.average_price, "market_price": 0.0},
             )
 
             if created:

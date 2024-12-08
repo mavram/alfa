@@ -54,6 +54,9 @@ if __name__ == "__main__":
         most_recent_eod_balance = portfolio.get_most_recent_eod_balance()
         print(f"Portfolio {portfolio.name}'s most recent end of day balance is {most_recent_eod_balance}")
 
+        for eod_b in portfolio.eod_balances:
+            print(eod_b.date)
+
         symbol = "MSFT"
         portfolio.calculate_eod_position(symbol)
         most_recent_eod_position = portfolio.get_most_recent_eod_position(symbol)
@@ -61,6 +64,9 @@ if __name__ == "__main__":
         symbol = "TSLA"
         portfolio.calculate_eod_position(symbol)
         most_recent_eod_position = portfolio.get_most_recent_eod_position(symbol)
+
+        for eod_p in portfolio.eod_positions:
+            print(eod_p.date)
 
         db.close()
     except Exception as e:

@@ -213,9 +213,8 @@ class Portfolio(BaseModel):
             log.error(f"Failed to get cash balance for portfolio {self.name}: {e}")
             raise e
 
-    def _update_balance(self, amount):
+    def _update_balance(self, timestamp, amount):
         try:
-            timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)  # convert to milliseconds
             log.debug(f"Updating cash balance in portfolio {self.name} at {_as_timestamp_str(timestamp)} with {amount}.")
 
             current_balance = self.get_cash()
@@ -252,14 +251,13 @@ class Portfolio(BaseModel):
             log.error(f"Failed to get position for {symbol} in portfolio {self.name}: {e}")
             raise e
 
-    def _update_position(self, symbol, quantity, price):
+    def _update_position(self, timestamp, symbol, quantity, price):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
             if not stock:
                 raise ValueError(f"Stock {symbol} does not exist in the database.")
 
-            timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)  # convert to milliseconds
             log.debug(
                 f"Updating portfolio {self.name}'s {symbol} position at {_as_timestamp_str(timestamp)} "
                 f"with {quantity} shares at {price:.2f} each."
@@ -317,7 +315,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._update_balance(total_amount_to_deposit)
+                self._update_balance(timestamp, total_amount_to_deposit)
 
             log.info(f"Deposited {amount} into portfolio {self.name}.")
             return self
@@ -347,7 +345,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._update_balance(-total_amount_to_withdraw)
+                self._update_balance(timestamp, -total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} from portfolio {self.name}.")
             return self
@@ -374,13 +372,13 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance
-                self._update_balance(-total_cost)
+                self._update_balance(timestamp, -total_cost)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
 
                 # Update position
-                self._update_position(symbol, quantity, price)
+                self._update_position(timestamp, symbol, quantity, price)
 
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
@@ -425,13 +423,13 @@ class Portfolio(BaseModel):
 
                 # Update cash balance to cover fees
                 if total_fees > 0:
-                    self._update_balance(-total_fees)
+                    self._update_balance(timestamp, -total_fees)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
 
                 # Update position
-                self._update_position(symbol, quantity, cost_basis_per_share)
+                self._update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
@@ -472,10 +470,10 @@ class Portfolio(BaseModel):
                 total_proceeds = quantity * price - fees
 
                 # Update cash balance
-                self._update_balance(total_proceeds)
+                self._update_balance(timestamp, total_proceeds)
 
                 # Update position
-                position = self._update_position(symbol, -quantity, price)
+                position = self._update_position(timestamp, symbol, -quantity, price)
                 if not position:
                     # Position was liquidated, stop watching
                     self.stop_watching(symbol)

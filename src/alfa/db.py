@@ -40,7 +40,7 @@ def _get_start_and_end_of_day(day):
         day = datetime.now(timezone.utc).date()
     start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
     end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
-    return (start_of_day, end_of_day)
+    return (day, start_of_day, end_of_day)
 
 
 def _as_validated_symbol(symbol):
@@ -509,7 +509,7 @@ class Portfolio(BaseModel):
             raise e
 
     def get_eod_balance(self, day=None):
-        start_of_day, end_of_day = _get_start_and_end_of_day(day)
+        day, start_of_day, end_of_day = _get_start_and_end_of_day(day)
 
         try:
             balance = (
@@ -532,7 +532,7 @@ class Portfolio(BaseModel):
             raise e
 
     def get_eod_position(self, symbol, day=None):
-        start_of_day, end_of_day = _get_start_and_end_of_day(day)
+        day, start_of_day, end_of_day = _get_start_and_end_of_day(day)
 
         try:
             symbol = _as_validated_symbol(symbol)

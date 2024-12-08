@@ -1,12 +1,20 @@
+import os
 from datetime import datetime, time, timezone
 from enum import Enum
 
 from peewee import BigIntegerField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
-from alfa.utils import create_directories_for_path
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
+
+
+def create_directories_for_path(path):
+    # Extract the directory portion of the path
+    directory = os.path.dirname(path)
+    # Create directories if they are missing
+    if directory:  # Avoid creating root directory if path is just a file name
+        os.makedirs(directory, exist_ok=True)
 
 
 def open_db():

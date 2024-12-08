@@ -1,9 +1,9 @@
 from enum import Enum
 
-from peewee import DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+from peewee import BigIntegerField, DateField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
 from alfa.config import log, settings
-from alfa.utils import create_directories_for_path, get_current_utc_date, get_timestamp_as_str
+from alfa.utils import create_directories_for_path, get_current_utc_date, get_current_utc_timestamp, get_timestamp_as_str
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
@@ -54,6 +54,8 @@ class Stock(BaseModel):
             if volume < 0:
                 raise ValueError("Volume cannot be negative.")
 
+            log.debug(f"Adding price for {self.symbol} on {timestamp}.")
+
             price = Price.create(
                 stock=self,
                 symbol=self.symbol,
@@ -76,7 +78,7 @@ class Price(BaseModel):
     id = IntegerField(primary_key=True)
     stock = ForeignKeyField(Stock, backref="prices", on_delete="CASCADE")
     symbol = TextField()
-    timestamp = IntegerField()  # Unix epoch time
+    timestamp = BigIntegerField()  # Unix epoch time
     open = FloatField()
     high = FloatField()
     low = FloatField()
@@ -131,6 +133,19 @@ class Portfolio(BaseModel):
             return query.exists()
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to check watchlist for '{symbol}' in portfolio '{self.name}': {e}")
+            raise e
+
+    def get_cash(self):
+        try:
+            cash = self.balances.order_by(Balance.timestamp.desc()).first()
+            if cash:
+                log.debug(f"Portfolio {self.name}'s most recent cash balance is from {get_timestamp_as_str(cash.timestamp)}.")
+                return cash.balance
+
+            log.debug(f"Portfolio {self.name} has no balances.")
+            return 0.0
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to get cash balance for portfolio '{self.name}': {e}")
             raise e
 
     def get_position(self, symbol):
@@ -198,6 +213,7 @@ class Portfolio(BaseModel):
 
     def deposit(self, external_id, timestamp, amount, fees=0.0):
         try:
+            log.info(f"Depositing {amount} {self.currency} into portfolio '{self.name}'.")
             with db.atomic():
                 total_amount_to_deposit = amount - fees
                 CashLedger.create(
@@ -209,7 +225,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._update_cash_balance(total_amount_to_deposit)
+                self._update_balance(total_amount_to_deposit)
 
             log.info(f"Deposited {amount} {self.currency} into portfolio '{self.name}'.")
             return self
@@ -219,6 +235,8 @@ class Portfolio(BaseModel):
 
     def withdraw(self, external_id, timestamp, amount, fees=0.0):
         try:
+            log.info(f"Withdrawing {amount} {self.currency} into portfolio '{self.name}'.")
+
             with db.atomic():
                 total_amount_to_withdraw = amount + fees
                 if total_amount_to_withdraw > self.cash:
@@ -236,7 +254,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
-                self._update_cash_balance(-total_amount_to_withdraw)
+                self._update_balance(-total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} {self.currency} from portfolio '{self.name}'.")
             return self
@@ -244,8 +262,17 @@ class Portfolio(BaseModel):
             log.error(f"Failed to withdraw {amount} {self.currency} from portfolio '{self.name}': {e}")
             raise e
 
-    def _update_cash_balance(self, amount):
+    def _update_balance(self, amount):
         try:
+            balance = self.get_cash() + amount
+            if balance < 0:
+                raise ValueError(f"Insufficient funds in portfolio '{self.name}' to update by {amount:.2f} amount.")
+
+            timestamp = get_current_utc_timestamp()
+            log.debug(f"Updating cash balance in portfolio '{self.name}' at {timestamp}.")
+
+            Balance.create(portfolio=self, timestamp=timestamp, balance=balance)
+
             self.cash += amount
             self.save()
 
@@ -257,7 +284,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio '{self.name}': {e}")
             raise e
 
-    def _create_or_update_position(self, symbol, quantity, price):
+    def _update_position(self, symbol, quantity, price):
         try:
             stock = Stock.get(Stock.symbol == symbol)
             position, created = Position.get_or_create(portfolio=self, stock=stock, defaults={"size": 0, "average_price": 0.0})
@@ -293,6 +320,8 @@ class Portfolio(BaseModel):
 
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         try:
+            log.info(f"Buying {quantity} shares of '{symbol}' at ${price:.2f} each in portfolio '{self.name}'.")
+
             symbol = _as_validated_symbol(symbol)
 
             with db.atomic():
@@ -307,13 +336,13 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance
-                self._update_cash_balance(-total_cost)
+                self._update_balance(-total_cost)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
 
                 # Update position
-                self._create_or_update_position(symbol, quantity, price)
+                self._update_position(symbol, quantity, price)
 
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
@@ -339,6 +368,8 @@ class Portfolio(BaseModel):
 
     def deposit_in_kind(self, external_id, timestamp, symbol, quantity, cost_basis_per_share, fees=0.0):
         try:
+            log.info(f"Depositing {quantity} shares of '{symbol}' at ${cost_basis_per_share:.2f} each in '{self.name}'.")
+
             symbol = _as_validated_symbol(symbol)
 
             with db.atomic():
@@ -354,13 +385,13 @@ class Portfolio(BaseModel):
                     )
 
                 # Update cash balance to cover fees
-                self._update_cash_balance(-total_fees)
+                self._update_balance(-total_fees)
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
 
                 # Update position
-                self._create_or_update_position(symbol, quantity, cost_basis_per_share)
+                self._update_position(symbol, quantity, cost_basis_per_share)
 
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
@@ -383,6 +414,8 @@ class Portfolio(BaseModel):
 
     def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         try:
+            log.info(f"Selling {quantity} shares of '{symbol}' at ${price:.2f} each in '{self.name}'.")
+
             symbol = _as_validated_symbol(symbol)
 
             with db.atomic():
@@ -399,10 +432,10 @@ class Portfolio(BaseModel):
                 total_proceeds = quantity * price - fees
 
                 # Update cash balance
-                self._update_cash_balance(total_proceeds)
+                self._update_balance(total_proceeds)
 
                 # Update position
-                position = self._create_or_update_position(symbol, -quantity, price)
+                position = self._update_position(symbol, -quantity, price)
                 if not position:
                     # Position was liquidated, stop watching
                     self.stop_watching(symbol)
@@ -429,35 +462,17 @@ class Portfolio(BaseModel):
             log.error(f"Failed to sell {quantity} shares of '{symbol}' at ${price:.2f}: {e}")
             raise e
 
-    def get_most_recent_eod_balance(self):
-        try:
-            eod_balance = self.eod_balances.order_by(EndOfDayBalance.date.desc()).first()
-            if eod_balance:
-                log.debug(f"Portfolio {self.name}'s most recent end of day balance is from {eod_balance.date}.")
-            else:
-                log.debug(f"Portfolio {self.name} has no end of day balances.")
-            return eod_balance
-        except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve the most recent end of day balance for {self.name}: {e}")
-            raise e
-
-    def calculate_eod_balance(self, date=None):
-        if not date:
-            date = get_current_utc_date()
-
-        try:
-            eod_balance, created = EndOfDayBalance.get_or_create(portfolio=self, date=date, defaults={"balance": self.cash})
-
-            if created:
-                log.debug(f"Created {date} end of day balance for portfolio '{self.name}'.")
-
-            eod_balance.balance = self.cash
-            eod_balance.save()
-
-            log.debug(f"Updated {date} end of day balance for portfolio '{self.name}': " f"Balance={eod_balance.balance:.2f}")
-        except Exception as e:
-            log.error(f"Failed to calculate end of day balance for '{date}' in portfolio '{self.name}': {e}")
-            raise e
+    # def get_most_recent_eod_balance(self, date):
+    #     try:
+    #         eod_balance = self.eod_balances.order_by(EndOfDayBalance.date.desc()).first()
+    #         if eod_balance:
+    #             log.debug(f"Portfolio {self.name}'s most recent end of day balance is from {eod_balance.date}.")
+    #         else:
+    #             log.debug(f"Portfolio {self.name} has no end of day balances.")
+    #         return eod_balance
+    #     except Exception as e:  # pragma: no cover
+    #         log.error(f"Failed to retrieve the most recent end of day balance for {self.name}: {e}")
+    #         raise e
 
     def get_most_recent_eod_position(self, symbol):
         try:
@@ -524,7 +539,7 @@ class CashLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
     portfolio = ForeignKeyField(Portfolio, backref="deposits_and_withdraws", on_delete="CASCADE")
-    timestamp = IntegerField()  # Unix epoch time
+    timestamp = BigIntegerField()  # Unix epoch time
     amount = FloatField()
     type = TextField(choices=[TransactionType.DEPOSIT, TransactionType.WITHDRAW])
     fees = FloatField()
@@ -538,7 +553,7 @@ class TransactionLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
     portfolio = ForeignKeyField(Portfolio, backref="transactions", on_delete="CASCADE")
-    timestamp = IntegerField(null=False)  # Unix epoch time
+    timestamp = BigIntegerField(null=False)  # Unix epoch time
     stock = ForeignKeyField(Stock, on_delete="CASCADE")
     quantity = IntegerField()
     price = FloatField()
@@ -568,6 +583,17 @@ class Position(BaseModel):
         indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
 
 
+class Balance(BaseModel):
+    id = IntegerField(primary_key=True)
+    timestamp = BigIntegerField(null=False)  # Unix epoch time
+    portfolio = ForeignKeyField(Portfolio, backref="balances", on_delete="CASCADE")
+    balance = FloatField()
+
+    class Meta:
+        table_name = "balance"
+        indexes = ((("portfolio", "timestamp"), True),)  # Unique constraint on portfolio and date
+
+
 class EndOfDayBalance(BaseModel):
     id = IntegerField(primary_key=True)
     portfolio = ForeignKeyField(Portfolio, backref="eod_balances", on_delete="CASCADE")
@@ -595,10 +621,10 @@ class EndOfDayPosition(BaseModel):
 
 """
 TODO:
-[] end-of-day balance
-[] end-of-day positions
-[] repo of deposits and withdraws
-[] repo of transactions
-[] batch processor
+[x] end-of-day balance
+[x] end-of-day positions
+[ ] repo of deposits and withdraws
+[ ] repo of transactions
+[ ] batch processor
 
 """

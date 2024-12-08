@@ -104,7 +104,6 @@ class Portfolio(BaseModel):
     id = IntegerField(primary_key=True)
     name = TextField(unique=True)
     currency = TextField(choices=[c.value for c in CurrencyType])
-    cash = FloatField(default=0.0)
 
     @staticmethod
     def add_portfolio(name, currency=CurrencyType.USD):
@@ -137,10 +136,12 @@ class Portfolio(BaseModel):
 
     def get_cash(self):
         try:
-            cash = self.balances.order_by(Balance.timestamp.desc()).first()
-            if cash:
-                log.debug(f"Portfolio {self.name}'s most recent cash balance is from {get_timestamp_as_str(cash.timestamp)}.")
-                return cash.balance
+            balance = self.balances.order_by(Balance.timestamp.desc()).first()
+            if balance:
+                log.debug(
+                    f"Portfolio {self.name}'s most recent cash balance is from {get_timestamp_as_str(balance.timestamp)}."
+                )
+                return balance.cash
 
             log.debug(f"Portfolio {self.name} has no balances.")
             return 0.0
@@ -239,10 +240,11 @@ class Portfolio(BaseModel):
 
             with db.atomic():
                 total_amount_to_withdraw = amount + fees
-                if total_amount_to_withdraw > self.cash:
+                current_balance = self.get_cash()
+                if total_amount_to_withdraw > current_balance:
                     raise ValueError(
                         f"Withdrawal amount {amount} and fees {fees} "
-                        f"exceeds available cash {self.cash} in portfolio '{self.name}'."
+                        f"exceeds available cash {current_balance} in portfolio '{self.name}'."
                     )
 
                 CashLedger.create(
@@ -264,21 +266,20 @@ class Portfolio(BaseModel):
 
     def _update_balance(self, amount):
         try:
-            balance = self.get_cash() + amount
-            if balance < 0:
+            timestamp = get_current_utc_timestamp()
+            log.debug(f"Updating cash balance in portfolio '{self.name}' at {get_timestamp_as_str(timestamp)} with {amount}.")
+
+            current_balance = self.get_cash()
+            new_balance = current_balance + amount
+            log.debug(f"Current Balance={current_balance:.2f}, New Balance={new_balance:.2f}")
+            if new_balance < 0:
                 raise ValueError(f"Insufficient funds in portfolio '{self.name}' to update by {amount:.2f} amount.")
 
-            timestamp = get_current_utc_timestamp()
-            log.debug(f"Updating cash balance in portfolio '{self.name}' at {timestamp}.")
-
-            Balance.create(portfolio=self, timestamp=timestamp, balance=balance)
-
-            self.cash += amount
-            self.save()
+            Balance.create(portfolio=self, timestamp=timestamp, cash=new_balance)
 
             log.debug(
                 f"Updated cash balance in portfolio '{self.name}': "
-                f"Original Cash={(self.cash - amount):.2f}, Current Cash={self.cash:.2f}"
+                f"Current Balance={current_balance:.2f}, New Balance={new_balance:.2f}"
             )
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to update cash balance in portfolio '{self.name}': {e}")
@@ -326,10 +327,10 @@ class Portfolio(BaseModel):
 
             with db.atomic():
                 total_cost = quantity * price + fees
-                if self.cash < total_cost:
+                if self.get_cash() < total_cost:
                     log.error(
                         f"Insufficient cash to buy {quantity} shares of '{symbol}'. "
-                        f"Required: {total_cost}, Available: {self.cash}."
+                        f"Required: {total_cost}, Available: {self.get_cash()}."
                     )
                     raise ValueError(
                         f"Portfolio '{self.name}' does not have sufficient cash to buy {quantity} shares of '{symbol}'."
@@ -374,10 +375,10 @@ class Portfolio(BaseModel):
 
             with db.atomic():
                 total_fees = fees
-                if self.cash < total_fees:
+                if self.get_cash() < total_fees:
                     log.error(
                         f"Insufficient cash to cover fees for depositing {quantity} shares of '{symbol}'. "
-                        f"Required Fees: ${total_fees:.2f}, Available Cash: ${self.cash:.2f}."
+                        f"Required Fees: ${total_fees:.2f}, Available Cash: ${self.get_cash():.2f}."
                     )
                     raise ValueError(
                         f"Portfolio '{self.name}' does not have sufficient cash to cover fees "
@@ -587,7 +588,7 @@ class Balance(BaseModel):
     id = IntegerField(primary_key=True)
     timestamp = BigIntegerField(null=False)  # Unix epoch time
     portfolio = ForeignKeyField(Portfolio, backref="balances", on_delete="CASCADE")
-    balance = FloatField()
+    cash = FloatField(default=0.0)
 
     class Meta:
         table_name = "balance"

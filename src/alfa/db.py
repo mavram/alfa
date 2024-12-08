@@ -9,7 +9,7 @@ from alfa.config import log, settings
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
-def create_directories_for_path(path):
+def _create_directories_for_path(path):
     # Extract the directory portion of the path
     directory = os.path.dirname(path)
     # Create directories if they are missing
@@ -21,7 +21,7 @@ def open_db():
     path = settings.DB_PATH
 
     log.debug(f"Initializing database at {path}.")
-    create_directories_for_path(path)
+    _create_directories_for_path(path)
     db.init(path)
     return db
 
@@ -33,6 +33,14 @@ class BaseModel(Model):
     @staticmethod
     def get_models():
         return BaseModel.__subclasses__()
+
+
+def _get_start_and_end_of_day(day):
+    if not day:
+        day = datetime.now(timezone.utc).date()
+    start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
+    end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
+    return (start_of_day, end_of_day)
 
 
 def _as_validated_symbol(symbol):
@@ -501,12 +509,7 @@ class Portfolio(BaseModel):
             raise e
 
     def get_eod_balance(self, day=None):
-        if not day:
-            day = datetime.now(timezone.utc).date()
-
-        # Calculate start and end timestamps for the day
-        start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
-        end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
+        start_of_day, end_of_day = _get_start_and_end_of_day(day)
 
         try:
             balance = (
@@ -529,11 +532,7 @@ class Portfolio(BaseModel):
             raise e
 
     def get_eod_position(self, symbol, day=None):
-        if not day:
-            day = datetime.now(timezone.utc).date()
-
-        start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
-        end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
+        start_of_day, end_of_day = _get_start_and_end_of_day(day)
 
         try:
             symbol = _as_validated_symbol(symbol)

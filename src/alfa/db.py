@@ -37,7 +37,7 @@ class BaseModel(Model):
 
 def _get_start_and_end_of_day(day):
     if not day:
-        day = datetime.now(timezone.utc).date()
+        day = datetime.now().date()
     start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
     end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
     return (day, start_of_day, end_of_day)
@@ -247,7 +247,11 @@ class Portfolio(BaseModel):
             if not stock:
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
-            position = self.positions.where(Position.stock == stock).order_by(Position.timestamp.desc()).first()
+            position = (
+                self.positions.where((Position.stock == stock) & (Position.size > 0.0))
+                .order_by(Position.timestamp.desc())
+                .first()
+            )
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
@@ -278,16 +282,18 @@ class Portfolio(BaseModel):
 
             new_size = current_size + quantity
             if new_size < 0:
-                raise ValueError(f"Cannot remove {abs(quantity)} shares from {symbol}'; only {current_size} available.")
+                raise ValueError(f"Cannot remove {abs(quantity)} shares from {symbol}; only {current_size} available.")
 
             if new_size == 0:
                 log.debug(f"Liquidating position for {symbol} in portfolio {self.name}.")
-                return None
-
-            new_average_price = current_average_price
-            if quantity > 0:
-                total_cost = (current_average_price * current_size) + (price * quantity)
-                new_average_price = total_cost / new_size
+                new_average_price = 0.0
+                new_market_price = 0.0
+            else:
+                new_average_price = current_average_price
+                new_market_price = price
+                if quantity > 0:
+                    total_cost = (current_average_price * current_size) + (price * quantity)
+                    new_average_price = total_cost / new_size
 
             new_position = Position.create(
                 portfolio=self,
@@ -295,11 +301,11 @@ class Portfolio(BaseModel):
                 timestamp=timestamp,
                 size=new_size,
                 average_price=new_average_price,
-                market_price=price,
+                market_price=new_market_price,
             )
 
             log.debug(
-                f"Updatding portfolio {self.name}'s {symbol} position: "
+                f"Updated portfolio {self.name}'s {symbol} position: "
                 f"Size={new_position.size}, Average Price={new_position.average_price:.2f}, "
                 f"Market Price={new_position.market_price:.2f}"
             )
@@ -482,7 +488,7 @@ class Portfolio(BaseModel):
 
                 # Update position
                 position = self._update_position(timestamp, symbol, -quantity, price)
-                if not position:
+                if position.size == 0.0:
                     # Position was liquidated, stop watching
                     self.stop_watching(symbol)
 

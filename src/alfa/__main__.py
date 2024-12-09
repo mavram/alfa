@@ -1,6 +1,6 @@
 import random
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from alfa.db import BaseModel, Portfolio, open_db
 
@@ -9,8 +9,8 @@ if __name__ == "__main__":
     def get_external_id():
         return random.random() * 1000
 
-    def get_now_utc_timestamp():
-        return int(datetime.now(timezone.utc).timestamp() * 1000)  # convert to milliseconds
+    def get_now_timestamp():
+        return int(datetime.now().timestamp() * 1000)  # convert to milliseconds
 
     def wait():
         time.sleep(0.001)  # wait one ms
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         tsla = portfolio.start_watching("TSLA")
 
         aapl.add_price(
-            timestamp=get_now_utc_timestamp(),
+            timestamp=get_now_timestamp(),
             open=152.0,
             high=157.0,
             low=150.0,
@@ -35,15 +35,15 @@ if __name__ == "__main__":
             volume=1100000,
         )
 
-        portfolio.deposit(get_external_id(), get_now_utc_timestamp(), 100)
+        portfolio.deposit(get_external_id(), get_now_timestamp(), 100)
         wait()
-        portfolio.withdraw(get_external_id(), get_now_utc_timestamp(), 90)
+        portfolio.withdraw(get_external_id(), get_now_timestamp(), 90)
         wait()
-        portfolio.buy(get_external_id(), get_now_utc_timestamp(), "MSFT", 10, 1)
+        portfolio.buy(get_external_id(), get_now_timestamp(), "MSFT", 10, 1)
         wait()
-        portfolio.deposit_in_kind(get_external_id(), get_now_utc_timestamp(), "MSFT", 100, 1)
+        portfolio.deposit_in_kind(get_external_id(), get_now_timestamp(), "MSFT", 100, 1)
         wait()
-        portfolio.sell(get_external_id(), get_now_utc_timestamp(), "MSFT", 5, 2)
+        portfolio.sell(get_external_id(), get_now_timestamp(), "MSFT", 5, 2)
         wait()
 
         portfolio.stop_watching("AAPL")

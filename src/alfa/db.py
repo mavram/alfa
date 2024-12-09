@@ -209,11 +209,21 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {e}")
             raise e
 
-    def get_cash(self):
+    def get_cash(self, start_timestamp=None, end_timestamp=None):
         try:
-            balance = self.balances.order_by(Balance.timestamp.desc()).first()
+            if start_timestamp and end_timestamp:
+                balance = (
+                    self.balances.where((Balance.timestamp >= start_timestamp) & (Balance.timestamp <= end_timestamp))
+                    .order_by(Balance.timestamp.desc())
+                    .first()
+                )
+            else:
+                balance = self.balances.order_by(Balance.timestamp.desc()).first()
             if balance:
-                log.debug(f"Portfolio {self.name}'s most recent cash balance is from {_as_timestamp_str(balance.timestamp)}.")
+                log.debug(
+                    f"Portfolio {self.name}'s most recent cash balance is from {_as_timestamp_str(balance.timestamp)}. "
+                    f"Cash: {balance.cash}"
+                )
                 return balance.cash
 
             log.debug(f"Portfolio {self.name} has no balances.")
@@ -241,14 +251,19 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio {self.name}: {e}")
             raise e
 
-    def get_position(self, symbol):
+    def get_position(self, symbol, start_timestamp=None, end_timestamp=None):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
             if not stock:
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
-            position = self.positions.where((Position.stock == stock)).order_by(Position.timestamp.desc()).first()
+            where_clause = Position.stock == stock
+            if start_timestamp and end_timestamp:
+                where_clause = (
+                    (Position.stock == stock) & (Position.timestamp >= start_timestamp) & (Position.timestamp <= end_timestamp)
+                )
+            position = self.positions.where(where_clause).order_by(Position.timestamp.desc()).first()
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
@@ -517,21 +532,9 @@ class Portfolio(BaseModel):
         day, start_of_day, end_of_day = _get_start_and_end_of_day(day)
 
         try:
-            balance = (
-                Balance.select()
-                .where((Balance.timestamp >= start_of_day) & (Balance.timestamp <= end_of_day))
-                .order_by(Balance.timestamp.desc())
-                .first()
-            )
-
-            if balance:
-                log.debug(
-                    f"Portfolio {self.name}'s {day} end of day balance, "
-                    f"at {_as_timestamp_str(balance.timestamp)}, is {balance.cash}."
-                )
-            else:
-                log.debug(f"Portfolio {self.name} has no end of day balance for {day}.")
-            return balance
+            cash = self.get_cash(start_of_day, end_of_day)
+            log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash}.")
+            return cash
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {e}")
             raise e
@@ -541,18 +544,8 @@ class Portfolio(BaseModel):
 
         try:
             symbol = _as_validated_symbol(symbol)
-            stock = Stock.get_or_none(Stock.symbol == symbol)
-            if not stock:
-                log.debug(f"Stock {symbol} does not exist in the database.")
-                return None
-
-            position = (
-                self.positions.join(Stock)
-                .where((Position.timestamp >= start_of_day) & (Position.timestamp <= end_of_day) & (Position.stock == stock))
-                .order_by(Position.timestamp.desc())
-                .first()
-            )
-            if position and position.size > 0.0:
+            position = self.get_position(symbol, start_of_day, end_of_day)
+            if position:
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
                     f"at {_as_timestamp_str(position.timestamp)}, is {position.size} shares at {position.average_price} each."
@@ -638,8 +631,7 @@ class Balance(BaseModel):
 
 """
 TODO:
-[x] end-of-day balance
-[x] end-of-day positions
+[ ] make _get_start_and_end_of_day to work with a timestamp interval (not only days)
 [ ] repo of deposits and withdraws
 [ ] repo of transactions
 [ ] batch processor

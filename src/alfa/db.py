@@ -323,7 +323,7 @@ class Portfolio(BaseModel):
                     external_id=external_id,
                     portfolio=self,
                     timestamp=timestamp,
-                    amount=total_amount_to_deposit,
+                    amount=amount,
                     type=TransactionType.DEPOSIT.value,
                     fees=fees,
                 )
@@ -353,7 +353,7 @@ class Portfolio(BaseModel):
                     external_id=external_id,
                     portfolio=self,
                     timestamp=timestamp,
-                    amount=-amount,  # Negative amount indicates withdrawal
+                    amount=amount,
                     type=TransactionType.WITHDRAW.value,
                     fees=fees,
                 )
@@ -498,7 +498,7 @@ class Portfolio(BaseModel):
                     portfolio=self,
                     timestamp=timestamp,
                     stock=stock,
-                    quantity=-quantity,  # Negative quantity indicates sale
+                    quantity=quantity,
                     price=price,
                     type=TransactionType.SELL.value,
                     fees=fees,

@@ -1,6 +1,6 @@
 import random
 import time
-from datetime import date, datetime, timezone
+from datetime import datetime
 
 from alfa.db import BaseModel, Portfolio, open_db
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         wait()
         portfolio.deposit_in_kind(get_external_id(), get_now_timestamp(), "MSFT", 100, 1)
         wait()
-        portfolio.sell(get_external_id(), get_now_timestamp(), "MSFT", 5, 2)
+        portfolio.sell(get_external_id(), get_now_timestamp(), "MSFT", 100, 2)
         wait()
 
         portfolio.stop_watching("AAPL")

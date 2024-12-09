@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, time, timezone
+from datetime import datetime, time
 from enum import Enum
 
 from peewee import BigIntegerField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
@@ -185,7 +185,8 @@ class Portfolio(BaseModel):
                 log.debug(f"Portfolio {self.name} is not watching {symbol}.")
                 return
 
-            if self.get_position(symbol):
+            position = self.get_position(symbol)
+            if position:
                 log.debug(f"Cannot remove {symbol} from watchlist in portfolio {self.name} due to active position.")
                 return
 
@@ -247,16 +248,14 @@ class Portfolio(BaseModel):
             if not stock:
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
-            position = (
-                self.positions.where((Position.stock == stock) & (Position.size > 0.0))
-                .order_by(Position.timestamp.desc())
-                .first()
-            )
+            position = self.positions.where((Position.stock == stock)).order_by(Position.timestamp.desc()).first()
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
+                    f"Size:{position.size}, Average Price:{position.average_price:2f}, Market Price:{position.market_price:2f}"
                 )
-                return position
+                if position.size > 0.0:
+                    return position
             log.debug(f"Portfolio {self.name} has no position in {symbol}.")
             return None
         except Exception as e:  # pragma: no cover
@@ -311,7 +310,7 @@ class Portfolio(BaseModel):
             )
 
             return new_position
-        except Exception as e:
+        except Exception as e:  # pragma: no covers
             log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {e}")
             raise e
 
@@ -553,7 +552,7 @@ class Portfolio(BaseModel):
                 .order_by(Position.timestamp.desc())
                 .first()
             )
-            if position:
+            if position and position.size > 0.0:
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
                     f"at {_as_timestamp_str(position.timestamp)}, is {position.size} shares at {position.average_price} each."

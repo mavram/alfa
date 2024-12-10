@@ -267,7 +267,9 @@ class Portfolio(BaseModel):
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
-                    f"Size:{position.size}, Average Price:{position.average_price:2f}, Market Price:{position.market_price:2f}"
+                    f"Size:{position.size}, "
+                    f"Average Price:{position.average_price:.2f}, "
+                    f"Market Price:{position.market_price:.2f}"
                 )
                 if position.size > 0.0:
                     return position
@@ -630,10 +632,8 @@ class Balance(BaseModel):
 
 
 """
-TODO:
-[ ] make _get_start_and_end_of_day to work with a timestamp interval (not only days)
 [ ] repo of deposits and withdraws
 [ ] repo of transactions
-[ ] batch processor
-
+[ ] import ledger entries
+[ ] process ledger entries
 """

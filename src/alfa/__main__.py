@@ -16,9 +16,9 @@ if __name__ == "__main__":
         db.connect()
         db.create_tables(BaseModel.get_models())
 
-        portfolio = Portfolio.use_portfolio("Theta")
-
+        portfolio = Portfolio.initialize_portfolio("Theta")
         tsla = portfolio.start_watching("TSLA")
+
         tsla.add_price(
             timestamp=get_timestamp(2, 16, 00),
             open=152.0,

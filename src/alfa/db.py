@@ -132,7 +132,7 @@ class Portfolio(BaseModel):
     currency = TextField(choices=[c.value for c in CurrencyType])
 
     @staticmethod
-    def use_portfolio(name, currency=CurrencyType.USD):
+    def initialize_portfolio(name, currency=CurrencyType.USD):
         try:
             portfolio, created = Portfolio.get_or_create(name=name, defaults={"currency": currency.value})
             if created:

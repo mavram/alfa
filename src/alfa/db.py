@@ -132,7 +132,7 @@ class Portfolio(BaseModel):
     currency = TextField(choices=[c.value for c in CurrencyType])
 
     @staticmethod
-    def add_portfolio(name, currency=CurrencyType.USD):
+    def use_portfolio(name, currency=CurrencyType.USD):
         try:
             portfolio, created = Portfolio.get_or_create(name=name, defaults={"currency": currency.value})
             if created:
@@ -143,7 +143,7 @@ class Portfolio(BaseModel):
             raise e
 
     @staticmethod
-    def get_portfolios():
+    def get_all_portfolios():
         try:
             return list(Portfolio.select())
         except Exception as e:  # pragma: no cover

@@ -16,7 +16,7 @@ if __name__ == "__main__":
         db.connect()
         db.create_tables(BaseModel.get_models())
 
-        portfolio = Portfolio.add_portfolio("Theta")
+        portfolio = Portfolio.use_portfolio("Theta")
 
         tsla = portfolio.start_watching("TSLA")
         tsla.add_price(
@@ -54,12 +54,13 @@ if __name__ == "__main__":
         portfolio.sell(get_external_id(), get_timestamp(4, 15, 15), "TSLA", 100, 500)
         portfolio.buy(get_external_id(), get_timestamp(5, 10, 10), "nvda", 10, 200)
 
-        # 10000 - 1000 - 2000 + 50000 - 2000 -> cash: 55000; shares: TSLA - 5, NVDA - 10
-        #
-
         portfolio.get_eod_position("TSLA")
         portfolio.get_eod_position("NVDA")
         portfolio.get_eod_balance()
+
+        watchlist = portfolio.get_watchlist()
+        print("Portfolio Watchlist:")
+        _ = [print(f"id: {s.id}, symbol: {s.symbol}, name: {s.name}") for s in watchlist]
 
         db.close()
     except Exception as e:

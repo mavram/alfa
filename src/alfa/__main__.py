@@ -1,5 +1,4 @@
 import random
-import time
 from datetime import datetime
 
 from alfa.db import BaseModel, Portfolio, open_db
@@ -9,11 +8,8 @@ if __name__ == "__main__":
     def get_external_id():
         return random.random() * 1000
 
-    def get_now_timestamp():
-        return int(datetime.now().timestamp() * 1000)  # convert to milliseconds
-
-    def wait():
-        time.sleep(0.001)  # wait one ms
+    def get_timestamp(day, hour, minute):
+        return datetime(2024, 12, day, hour, minute).timestamp() * 1000
 
     try:
         db = open_db()
@@ -22,37 +18,48 @@ if __name__ == "__main__":
 
         portfolio = Portfolio.add_portfolio("Theta")
 
-        aapl = portfolio.start_watching("AAPL", "Apple Inc.")
         tsla = portfolio.start_watching("TSLA")
-
-        aapl.add_price(
-            timestamp=get_now_timestamp(),
+        tsla.add_price(
+            timestamp=get_timestamp(2, 16, 00),
             open=152.0,
             high=157.0,
             low=150.0,
             close=156.0,
-            adjusted_close=155.5,
+            adjusted_close=400.0,
+            volume=1100000,
+        )
+        tsla.add_price(
+            timestamp=get_timestamp(3, 16, 00),
+            open=156.0,
+            high=157.0,
+            low=150.0,
+            close=157.0,
+            adjusted_close=450.0,
+            volume=1100000,
+        )
+        tsla.add_price(
+            timestamp=get_timestamp(4, 16, 00),
+            open=156.0,
+            high=157.0,
+            low=150.0,
+            close=157.0,
+            adjusted_close=500.0,
             volume=1100000,
         )
 
-        portfolio.deposit(get_external_id(), get_now_timestamp(), 100)
-        wait()
-        portfolio.withdraw(get_external_id(), get_now_timestamp(), 90)
-        wait()
-        portfolio.buy(get_external_id(), get_now_timestamp(), "MSFT", 10, 1)
-        wait()
-        portfolio.deposit_in_kind(get_external_id(), get_now_timestamp(), "MSFT", 100, 1)
-        wait()
-        portfolio.sell(get_external_id(), get_now_timestamp(), "MSFT", 100, 2)
-        wait()
+        portfolio.deposit(get_external_id(), get_timestamp(2, 11, 11), 10000)
+        portfolio.withdraw(get_external_id(), get_timestamp(3, 12, 12), 1000)
+        portfolio.buy(get_external_id(), get_timestamp(3, 13, 13), "tsla", 5, 400)
+        portfolio.deposit_in_kind(get_external_id(), get_timestamp(4, 11, 11), "tsla", 100, 200)
+        portfolio.sell(get_external_id(), get_timestamp(4, 15, 15), "TSLA", 100, 500)
+        portfolio.buy(get_external_id(), get_timestamp(5, 10, 10), "nvda", 10, 200)
 
-        portfolio.stop_watching("AAPL")
-        portfolio.stop_watching("MSFT")
+        # 10000 - 1000 - 2000 + 50000 - 2000 -> cash: 55000; shares: TSLA - 5, NVDA - 10
+        #
 
-        portfolio.get_eod_balance()
-
-        portfolio.get_eod_position("MSFT")
         portfolio.get_eod_position("TSLA")
+        portfolio.get_eod_position("NVDA")
+        portfolio.get_eod_balance()
 
         db.close()
     except Exception as e:

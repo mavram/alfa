@@ -35,12 +35,11 @@ class BaseModel(Model):
         return BaseModel.__subclasses__()
 
 
-def _get_start_and_end_of_day(day):
+def _get_end_of_day(day):
     if not day:
         day = datetime.now().date()
-    start_of_day = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
     end_of_day = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
-    return (day, start_of_day, end_of_day)
+    return (day, end_of_day)
 
 
 def _as_validated_symbol(symbol):
@@ -108,6 +107,10 @@ class Price(BaseModel):
     close = FloatField()
     adjusted_close = FloatField()
     volume = IntegerField()
+
+    class Meta:
+        table_name = "price"
+        indexes = ((("stock", "timestamp"), True),)  # Unique constraint on stock and timestamp
 
 
 class CurrencyType(Enum):
@@ -209,20 +212,16 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {e}")
             raise e
 
-    def get_cash(self, start_timestamp=None, end_timestamp=None):
+    def get_cash(self, end_timestamp=None):
         try:
-            if start_timestamp and end_timestamp:
-                balance = (
-                    self.balances.where((Balance.timestamp >= start_timestamp) & (Balance.timestamp <= end_timestamp))
-                    .order_by(Balance.timestamp.desc())
-                    .first()
-                )
-            else:
-                balance = self.balances.order_by(Balance.timestamp.desc()).first()
+            where_clause = True
+            if end_timestamp:
+                where_clause = Balance.timestamp <= end_timestamp
+            balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
                 log.debug(
                     f"Portfolio {self.name}'s most recent cash balance is from {_as_timestamp_str(balance.timestamp)}. "
-                    f"Cash: {balance.cash}"
+                    f"Cash: {balance.cash:.2f}"
                 )
                 return balance.cash
 
@@ -251,7 +250,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio {self.name}: {e}")
             raise e
 
-    def get_position(self, symbol, start_timestamp=None, end_timestamp=None):
+    def get_position(self, symbol, end_timestamp=None):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
@@ -259,10 +258,8 @@ class Portfolio(BaseModel):
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
             where_clause = Position.stock == stock
-            if start_timestamp and end_timestamp:
-                where_clause = (
-                    (Position.stock == stock) & (Position.timestamp >= start_timestamp) & (Position.timestamp <= end_timestamp)
-                )
+            if end_timestamp:
+                where_clause = (Position.stock == stock) & (Position.timestamp <= end_timestamp)
             position = self.positions.where(where_clause).order_by(Position.timestamp.desc()).first()
             if position:
                 log.debug(
@@ -531,26 +528,28 @@ class Portfolio(BaseModel):
             raise e
 
     def get_eod_balance(self, day=None):
-        day, start_of_day, end_of_day = _get_start_and_end_of_day(day)
+        day, end_of_day = _get_end_of_day(day)
 
         try:
-            cash = self.get_cash(start_of_day, end_of_day)
-            log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash}.")
+            cash = self.get_cash(end_of_day)
+            log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {e}")
             raise e
 
     def get_eod_position(self, symbol, day=None):
-        day, start_of_day, end_of_day = _get_start_and_end_of_day(day)
+        day, end_of_day = _get_end_of_day(day)
 
         try:
             symbol = _as_validated_symbol(symbol)
-            position = self.get_position(symbol, start_of_day, end_of_day)
+            position = self.get_position(symbol, end_of_day)
             if position:
+                # TODO: use market price of the given day
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
-                    f"at {_as_timestamp_str(position.timestamp)}, is {position.size} shares at {position.average_price} each."
+                    f"as of {_as_timestamp_str(position.timestamp)}, is {position.size} shares."
+                    f"Average Price: {position.average_price:.2f}. Market Price: {position.market_price:.2f}"
                 )
             else:
                 log.debug(f"Portfolio {self.name} has no {day} end of day positions for {symbol}.")

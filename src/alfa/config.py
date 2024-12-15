@@ -39,6 +39,6 @@ logging.basicConfig(
 )
 
 # Configure ORM logging
-logging.getLogger("peewee").setLevel(max(logging_level, logging.ERROR))
+logging.getLogger("peewee").setLevel(max(logging_level, logging.DEBUG))
 
 log = logging

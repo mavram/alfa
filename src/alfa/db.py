@@ -332,7 +332,6 @@ class Portfolio(BaseModel):
         try:
             log.info(f"Depositing {amount} into portfolio {self.name}.")
             with db.atomic():
-                total_amount_to_deposit = amount - fees
                 CashLedger.create(
                     external_id=external_id,
                     portfolio=self,
@@ -342,6 +341,7 @@ class Portfolio(BaseModel):
                     fees=fees,
                 )
 
+                total_amount_to_deposit = amount - fees
                 self._update_balance(timestamp, total_amount_to_deposit)
 
             log.info(f"Deposited {amount} into portfolio {self.name}.")
@@ -398,14 +398,8 @@ class Portfolio(BaseModel):
                         f"Portfolio {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}."
                     )
 
-                # Update cash balance
-                self._update_balance(timestamp, -total_cost)
-
                 # Add symbol to watchlist
                 self.start_watching(symbol)
-
-                # Update position
-                self._update_position(timestamp, symbol, quantity, price)
 
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
@@ -419,6 +413,11 @@ class Portfolio(BaseModel):
                     type=TransactionType.BUY.value,
                     fees=fees,
                 )
+
+                # Update cash balance
+                self._update_balance(timestamp, -total_cost)
+                # Update position
+                self._update_position(timestamp, symbol, quantity, price)
 
             log.info(
                 f"Bought {quantity} shares of {symbol} at ${price:.2f} each. "
@@ -448,16 +447,6 @@ class Portfolio(BaseModel):
                         f"for depositing {quantity} shares of {symbol}."
                     )
 
-                # Update cash balance to cover fees
-                if total_fees > 0:
-                    self._update_balance(timestamp, -total_fees)
-
-                # Add symbol to watchlist
-                self.start_watching(symbol)
-
-                # Update position
-                self._update_position(timestamp, symbol, quantity, cost_basis_per_share)
-
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
                 TransactionLedger.create(
@@ -470,6 +459,14 @@ class Portfolio(BaseModel):
                     type=TransactionType.DEPOSIT_IN_KIND.value,
                     fees=fees,
                 )
+
+                # Update cash balance to cover fees
+                if total_fees > 0:
+                    self._update_balance(timestamp, -total_fees)
+                # Add symbol to watchlist
+                self.start_watching(symbol)
+                # Update position
+                self._update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
             log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. " f"Fees: ${fees:.2f}.")
             return self
@@ -496,17 +493,6 @@ class Portfolio(BaseModel):
                         f"Request to sell {quantity} shares of {symbol} exceeds current position of {position.size} shares."
                     )
 
-                total_proceeds = quantity * price - fees
-
-                # Update cash balance
-                self._update_balance(timestamp, total_proceeds)
-
-                # Update position
-                position = self._update_position(timestamp, symbol, -quantity, price)
-                if position.size == 0.0:
-                    # Position was liquidated, stop watching
-                    self.stop_watching(symbol)
-
                 # Record the transaction
                 stock = Stock.get(Stock.symbol == symbol)
                 TransactionLedger.create(
@@ -519,6 +505,15 @@ class Portfolio(BaseModel):
                     type=TransactionType.SELL.value,
                     fees=fees,
                 )
+
+                total_proceeds = quantity * price - fees
+                # Update cash balance
+                self._update_balance(timestamp, total_proceeds)
+                # Update position
+                position = self._update_position(timestamp, symbol, -quantity, price)
+                if position.size == 0.0:
+                    # Position was liquidated, stop watching
+                    self.stop_watching(symbol)
 
             log.info(
                 f"Sold {quantity} shares of {symbol} at ${price:.2f} each. "

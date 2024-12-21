@@ -48,6 +48,9 @@ if __name__ == "__main__":
         except IntegrityError as e:
             print(f"{type(e).__name__} : {e}")
 
+        tsla.get_price()
+        tsla.get_price(by_timestamp=get_timestamp(4, 11, 00))
+
         try:
             portfolio.deposit(1, get_timestamp(2, 11, 11), 10000)
             portfolio.withdraw(2, get_timestamp(3, 12, 12), 1000)

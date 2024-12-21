@@ -59,16 +59,21 @@ class Stock(BaseModel):
     symbol = TextField(unique=True)
     name = TextField(null=True)
 
-    def get_latest_price(self):
+    def get_price(self, by_timestamp=None):
         try:
-            price = self.prices.order_by(Price.timestamp.desc()).first()
+            where_clause = True
+            if by_timestamp:
+                where_clause = Price.timestamp <= by_timestamp
+            price = self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
             if price:
-                log.debug(f"{self.symbol}'s most recent price is from {_as_timestamp_str(price.timestamp)}.")
+                log.debug(
+                    f"{self.symbol}'s most recent price is from {_as_timestamp_str(price.timestamp)}. {price.adjusted_close}"
+                )
             else:
-                log.debug(f"{self.symbol} has no price records.")
+                log.debug(f"{self.symbol} has no prices.")
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve the most recent price for {self.symbol}: {type(e).__name__} : {e}")
+            log.error(f"Failed to get the price for {self.symbol}: {type(e).__name__} : {e}")
             raise e
 
     def add_price(self, timestamp, open, high, low, close, adjusted_close, volume):
@@ -92,7 +97,7 @@ class Stock(BaseModel):
             log.debug(f"Added price for {self.symbol} on {_as_timestamp_str(timestamp)} successfully.")
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Error adding price for {self.symbol}: {type(e).__name__} : {e}")
+            log.error(f"Failed to add price for {self.symbol}: {type(e).__name__} : {e}")
             raise e
 
 
@@ -212,11 +217,11 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_cash(self, end_timestamp=None):
+    def get_cash(self, by_timestamp=None):
         try:
             where_clause = True
-            if end_timestamp:
-                where_clause = Balance.timestamp <= end_timestamp
+            if by_timestamp:
+                where_clause = Balance.timestamp <= by_timestamp
             balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
                 log.debug(
@@ -250,7 +255,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_position(self, symbol, end_timestamp=None):
+    def get_position(self, symbol, by_timestamp=None):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
@@ -258,9 +263,10 @@ class Portfolio(BaseModel):
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
             where_clause = Position.stock == stock
-            if end_timestamp:
-                where_clause = (Position.stock == stock) & (Position.timestamp <= end_timestamp)
+            if by_timestamp:
+                where_clause = (Position.stock == stock) & (Position.timestamp <= by_timestamp)
             position = self.positions.where(where_clause).order_by(Position.timestamp.desc()).first()
+            # TODO: use market price of the given day (or latest available)
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
@@ -542,7 +548,6 @@ class Portfolio(BaseModel):
             symbol = _as_validated_symbol(symbol)
             position = self.get_position(symbol, end_of_day)
             if position:
-                # TODO: use market price of the given day
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
                     f"as of {_as_timestamp_str(position.timestamp)}, is {position.size} shares."
@@ -630,8 +635,5 @@ class Balance(BaseModel):
 
 
 """
-[ ] repo of deposits and withdraws
-[ ] repo of transactions
-[ ] import ledger entries
-[ ] process ledger entries
+[ ] import transactions (deposit, withdraw, buy, sell, ...) from files
 """

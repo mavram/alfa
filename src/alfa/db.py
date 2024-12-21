@@ -59,7 +59,7 @@ class Stock(BaseModel):
     symbol = TextField(unique=True)
     name = TextField(null=True)
 
-    def get_most_recent_price(self):
+    def get_latest_price(self):
         try:
             price = self.prices.order_by(Price.timestamp.desc()).first()
             if price:
@@ -132,7 +132,7 @@ class Portfolio(BaseModel):
     currency = TextField(choices=[c.value for c in CurrencyType])
 
     @staticmethod
-    def initialize_portfolio(name, currency=CurrencyType.USD):
+    def initialize(name, currency=CurrencyType.USD):
         try:
             portfolio, created = Portfolio.get_or_create(name=name, defaults={"currency": currency.value})
             if created:
@@ -143,7 +143,7 @@ class Portfolio(BaseModel):
             raise e
 
     @staticmethod
-    def get_all_portfolios():
+    def get_portfolios():
         try:
             return list(Portfolio.select())
         except Exception as e:  # pragma: no cover

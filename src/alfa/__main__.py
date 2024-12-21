@@ -1,4 +1,3 @@
-import random
 from datetime import datetime
 
 from peewee import IntegrityError
@@ -6,9 +5,6 @@ from peewee import IntegrityError
 from alfa.db import BaseModel, Portfolio, open_db
 
 if __name__ == "__main__":
-
-    def get_external_id():
-        return random.random() * 1000
 
     def get_timestamp(day, hour, minute):
         return datetime(2024, 12, day, hour, minute).timestamp() * 1000
@@ -53,12 +49,12 @@ if __name__ == "__main__":
             print(f"{type(e).__name__} : {e}")
 
         try:
-            portfolio.deposit(get_external_id(), get_timestamp(2, 11, 11), 10000)
-            portfolio.withdraw(get_external_id(), get_timestamp(3, 12, 12), 1000)
-            portfolio.buy(get_external_id(), get_timestamp(3, 13, 13), "tsla", 5, 400)
-            portfolio.deposit_in_kind(get_external_id(), get_timestamp(4, 11, 11), "tsla", 100, 200)
-            portfolio.sell(get_external_id(), get_timestamp(4, 15, 15), "TSLA", 100, 500)
-            portfolio.buy(get_external_id(), get_timestamp(5, 10, 10), "nvda", 10, 200)
+            portfolio.deposit(1, get_timestamp(2, 11, 11), 10000)
+            portfolio.withdraw(2, get_timestamp(3, 12, 12), 1000)
+            portfolio.buy(3, get_timestamp(3, 13, 13), "tsla", 5, 400)
+            portfolio.deposit_in_kind(4, get_timestamp(4, 11, 11), "tsla", 100, 200)
+            portfolio.sell(5, get_timestamp(4, 15, 15), "TSLA", 100, 500)
+            portfolio.buy(6, get_timestamp(5, 10, 10), "nvda", 10, 200)
         except IntegrityError as e:
             print(f"{type(e).__name__} : {e}")
 

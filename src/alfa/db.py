@@ -334,19 +334,36 @@ class Portfolio(BaseModel):
             log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
+    def _update_cash_ledger(self, external_id, timestamp, type, fees, amount):
+        # Record Cash Transaction
+        CashLedger.create(
+            external_id=external_id,
+            portfolio=self,
+            timestamp=timestamp,
+            amount=amount,
+            type=type,
+            fees=fees,
+        )
+
+    def _update_transaction_ledger(self, external_id, timestamp, type, symbol, fees, quantity, price):
+        # Record Transaction
+        stock = Stock.get(Stock.symbol == symbol)
+        TransactionLedger.create(
+            external_id=external_id,
+            portfolio=self,
+            timestamp=timestamp,
+            stock=stock,
+            quantity=quantity,
+            price=price,
+            type=type,
+            fees=fees,
+        )
+
     def deposit(self, external_id, timestamp, amount, fees=0.0):
         try:
             log.info(f"Depositing {amount} into portfolio {self.name}.")
             with db.atomic():
-                CashLedger.create(
-                    external_id=external_id,
-                    portfolio=self,
-                    timestamp=timestamp,
-                    amount=amount,
-                    type=TransactionType.DEPOSIT.value,
-                    fees=fees,
-                )
-
+                self._update_cash_ledger(external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount)
                 total_amount_to_deposit = amount - fees
                 self._update_balance(timestamp, total_amount_to_deposit)
 
@@ -369,15 +386,7 @@ class Portfolio(BaseModel):
                         f"exceeds available cash {current_balance} in portfolio {self.name}."
                     )
 
-                CashLedger.create(
-                    external_id=external_id,
-                    portfolio=self,
-                    timestamp=timestamp,
-                    amount=amount,
-                    type=TransactionType.WITHDRAW.value,
-                    fees=fees,
-                )
-
+                self._update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
                 self._update_balance(timestamp, -total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} from portfolio {self.name}.")
@@ -406,20 +415,9 @@ class Portfolio(BaseModel):
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
-
-                # Record the transaction
-                stock = Stock.get(Stock.symbol == symbol)
-                TransactionLedger.create(
-                    external_id=external_id,
-                    portfolio=self,
-                    timestamp=timestamp,
-                    stock=stock,
-                    quantity=quantity,
-                    price=price,
-                    type=TransactionType.BUY.value,
-                    fees=fees,
+                self._update_transaction_ledger(
+                    external_id, timestamp, TransactionType.BUY.value, symbol, fees, quantity, price
                 )
-
                 # Update cash balance
                 self._update_balance(timestamp, -total_cost)
                 # Update position
@@ -453,19 +451,9 @@ class Portfolio(BaseModel):
                         f"for depositing {quantity} shares of {symbol}."
                     )
 
-                # Record the transaction
-                stock = Stock.get(Stock.symbol == symbol)
-                TransactionLedger.create(
-                    external_id=external_id,
-                    portfolio=self,
-                    timestamp=timestamp,
-                    stock=stock,
-                    quantity=quantity,
-                    price=cost_basis_per_share,
-                    type=TransactionType.DEPOSIT_IN_KIND.value,
-                    fees=fees,
+                self._update_transaction_ledger(
+                    external_id, timestamp, TransactionType.DEPOSIT_IN_KIND.value, symbol, fees, quantity, cost_basis_per_share
                 )
-
                 # Update cash balance to cover fees
                 if total_fees > 0:
                     self._update_balance(timestamp, -total_fees)
@@ -499,17 +487,8 @@ class Portfolio(BaseModel):
                         f"Request to sell {quantity} shares of {symbol} exceeds current position of {position.size} shares."
                     )
 
-                # Record the transaction
-                stock = Stock.get(Stock.symbol == symbol)
-                TransactionLedger.create(
-                    external_id=external_id,
-                    portfolio=self,
-                    timestamp=timestamp,
-                    stock=stock,
-                    quantity=quantity,
-                    price=price,
-                    type=TransactionType.SELL.value,
-                    fees=fees,
+                self._update_transaction_ledger(
+                    external_id, timestamp, TransactionType.SELL.value, symbol, fees, quantity, price
                 )
 
                 total_proceeds = quantity * price - fees

@@ -68,7 +68,7 @@ class Stock(BaseModel):
                 log.debug(f"{self.symbol} has no price records.")
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve the most recent price for {self.symbol}: {e}")
+            log.error(f"Failed to retrieve the most recent price for {self.symbol}: {type(e).__name__} : {e}")
             raise e
 
     def add_price(self, timestamp, open, high, low, close, adjusted_close, volume):
@@ -92,7 +92,7 @@ class Stock(BaseModel):
             log.debug(f"Added price for {self.symbol} on {_as_timestamp_str(timestamp)} successfully.")
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Error adding price for {self.symbol}: {e}")
+            log.error(f"Error adding price for {self.symbol}: {type(e).__name__} : {e}")
             raise e
 
 
@@ -139,7 +139,7 @@ class Portfolio(BaseModel):
                 log.debug(f"Created portfolio {name} using currency {currency.value}.")
             return portfolio
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to add portfolio {name}: {e}")
+            log.error(f"Failed to add portfolio {name}: {type(e).__name__} : {e}")
             raise e
 
     @staticmethod
@@ -157,7 +157,7 @@ class Portfolio(BaseModel):
             query = StockToWatch.select().join(Stock).where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
             return query.exists()
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to check watchlist for {symbol} in portfolio {self.name}: {e}")
+            log.error(f"Failed to check watchlist for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def start_watching(self, symbol, name=None):
@@ -177,7 +177,7 @@ class Portfolio(BaseModel):
 
             return stock
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to add {symbol} to watchlist in portfolio {self.name}: {e}")
+            log.error(f"Failed to add {symbol} to watchlist in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def stop_watching(self, symbol):
@@ -202,14 +202,14 @@ class Portfolio(BaseModel):
             else:  # pragma: no cover
                 log.debug(f"No watchlist entry found for {symbol} in portfolio {self.name}.")
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to remove {symbol} from watchlist in portfolio {self.name}: {e}")
+            log.error(f"Failed to remove {symbol} from watchlist in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def get_watchlist(self):
         try:
             return list(Stock.select().join(StockToWatch).where(StockToWatch.portfolio == self))
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {e}")
+            log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def get_cash(self, end_timestamp=None):
@@ -228,7 +228,7 @@ class Portfolio(BaseModel):
             log.debug(f"Portfolio {self.name} has no balances.")
             return 0.0
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get cash balance for portfolio {self.name}: {e}")
+            log.error(f"Failed to get cash balance for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def _update_balance(self, timestamp, amount):
@@ -247,7 +247,7 @@ class Portfolio(BaseModel):
                 f"Previous Balance={current_balance:.2f}, New Balance={new_balance:.2f}"
             )
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to update cash balance in portfolio {self.name}: {e}")
+            log.error(f"Failed to update cash balance in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def get_position(self, symbol, end_timestamp=None):
@@ -273,7 +273,7 @@ class Portfolio(BaseModel):
             log.debug(f"Portfolio {self.name} has no position in {symbol}.")
             return None
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get position for {symbol} in portfolio {self.name}: {e}")
+            log.error(f"Failed to get position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def _update_position(self, timestamp, symbol, quantity, price):
@@ -325,7 +325,7 @@ class Portfolio(BaseModel):
 
             return new_position
         except Exception as e:  # pragma: no covers
-            log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {e}")
+            log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def deposit(self, external_id, timestamp, amount, fees=0.0):
@@ -347,7 +347,7 @@ class Portfolio(BaseModel):
             log.info(f"Deposited {amount} into portfolio {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to deposit {amount} into portfolio {self.name}: {e}")
+            log.error(f"Failed to deposit {amount} into portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def withdraw(self, external_id, timestamp, amount, fees=0.0):
@@ -377,7 +377,7 @@ class Portfolio(BaseModel):
             log.info(f"Withdrew {amount} from portfolio {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to withdraw {amount} from portfolio {self.name}: {e}")
+            log.error(f"Failed to withdraw {amount} from portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
@@ -426,7 +426,7 @@ class Portfolio(BaseModel):
             )
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to buy {quantity} shares of {symbol} at ${price:.2f}: {e}")
+            log.error(f"Failed to buy {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
             raise e
 
     def deposit_in_kind(self, external_id, timestamp, symbol, quantity, cost_basis_per_share, fees=0.0):
@@ -474,7 +474,9 @@ class Portfolio(BaseModel):
             log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. " f"Fees: ${fees:.2f}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {e}")
+            log.error(
+                f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
@@ -524,7 +526,7 @@ class Portfolio(BaseModel):
             )
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {e}")
+            log.error(f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
             raise e
 
     def get_eod_balance(self, day=None):
@@ -535,7 +537,7 @@ class Portfolio(BaseModel):
             log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {e}")
+            log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def get_eod_position(self, symbol, day=None):
@@ -555,7 +557,9 @@ class Portfolio(BaseModel):
                 log.debug(f"Portfolio {self.name} has no {day} end of day positions for {symbol}.")
             return position
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve {day} end of day position for {symbol} in portfolio {self.name}: {e}")
+            log.error(
+                f"Failed to retrieve {day} end of day position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
 

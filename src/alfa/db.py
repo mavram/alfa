@@ -55,7 +55,7 @@ def _get_start_of_timestamp(timestamp, interval_type):
         timestamp = timestamp / 1000
         # Convert to datetime object
         day = datetime.fromtimestamp(timestamp).date()
-        start_timestamp = int(datetime.combine(day, time(0, 0, 0, 0)).timestamp() * 1000)
+        start_timestamp = int(datetime.combine(day, time.min).timestamp() * 1000)
         # log.debug(
         #     f"timestamp:{_as_timestamp_str(timestamp)}. day: {day}. start_timestamp: {_as_timestamp_str(start_timestamp)}"
         # )
@@ -69,7 +69,7 @@ def _get_end_of_timestamp(timestamp, interval_type):
         timestamp = timestamp / 1000
         # Convert to datetime object
         day = datetime.fromtimestamp(timestamp).date()
-        end_timestamp = int(datetime.combine(day, time(23, 59, 59, 999000)).timestamp() * 1000)
+        end_timestamp = int(datetime.combine(day, time.max).timestamp() * 1000)
         # log.debug(f"timestamp:{_as_timestamp_str(timestamp)}. day: {day}. end_timestamp: {_as_timestamp_str(end_timestamp)}")
         return end_timestamp
     raise ValueError("Not implemented. {interval_type}.")
@@ -108,6 +108,7 @@ class Stock(BaseModel):
 
             log.debug(f"Adding price for {self.symbol} on {_as_timestamp_str(timestamp)}.")
 
+            # TODO: switch to get_or_create
             price = Price.create(
                 stock=self,
                 symbol=self.symbol,

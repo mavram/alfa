@@ -2,12 +2,13 @@ from datetime import datetime
 
 from peewee import IntegrityError
 
+from alfa.config import log
 from alfa.db import BaseModel, Portfolio, open_db
 
 if __name__ == "__main__":
 
     def get_timestamp(day, hour, minute):
-        return datetime(2024, 12, day, hour, minute).timestamp() * 1000
+        return int(datetime(2024, 12, day, hour, minute).timestamp() * 1000)
 
     try:
         db = open_db()
@@ -49,7 +50,7 @@ if __name__ == "__main__":
             print(f"{type(e).__name__} : {e}")
 
         tsla.get_price()
-        tsla.get_price(by_timestamp=get_timestamp(4, 11, 00))
+        tsla.get_price(end_timestamp=get_timestamp(4, 11, 00))
 
         try:
             portfolio.deposit(1, get_timestamp(2, 11, 11), 10000)
@@ -60,6 +61,11 @@ if __name__ == "__main__":
             portfolio.buy(6, get_timestamp(5, 10, 10), "nvda", 10, 200)
         except IntegrityError as e:
             print(f"{type(e).__name__} : {e}")
+
+        portfolio.get_cash()
+        portfolio.get_position("TSLA")
+        portfolio.get_position("NVDA")
+        portfolio.get_position("MSFT")
 
         portfolio.get_eod_position("TSLA")
         portfolio.get_eod_position("NVDA")
@@ -72,3 +78,4 @@ if __name__ == "__main__":
         db.close()
     except Exception as e:
         print(f"{type(e).__name__} : {e}")
+        log.exception(e)

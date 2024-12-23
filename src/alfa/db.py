@@ -49,30 +49,10 @@ def _as_timestamp_str(timestamp):
     return "None"
 
 
-def _get_start_of_timestamp(timestamp, interval_type):
-    if interval_type == IntervalType.DAY.value:
-        # Convert milliseconds to seconds
-        timestamp = timestamp / 1000
-        # Convert to datetime object
-        day = datetime.fromtimestamp(timestamp).date()
-        start_timestamp = int(datetime.combine(day, time.min).timestamp() * 1000)
-        # log.debug(
-        #     f"timestamp:{_as_timestamp_str(timestamp)}. day: {day}. start_timestamp: {_as_timestamp_str(start_timestamp)}"
-        # )
-        return start_timestamp
-    raise ValueError("Not implemented. {interval_type}.")
-
-
-def _get_end_of_timestamp(timestamp, interval_type):
-    if interval_type == IntervalType.DAY.value:
-        # Convert milliseconds to seconds
-        timestamp = timestamp / 1000
-        # Convert to datetime object
-        day = datetime.fromtimestamp(timestamp).date()
-        end_timestamp = int(datetime.combine(day, time.max).timestamp() * 1000)
-        # log.debug(f"timestamp:{_as_timestamp_str(timestamp)}. day: {day}. end_timestamp: {_as_timestamp_str(end_timestamp)}")
-        return end_timestamp
-    raise ValueError("Not implemented. {interval_type}.")
+def get_eod_timestamp(day):
+    if not day:
+        day = datetime.now().date()
+    return int(datetime.combine(day, time.max).timestamp() * 1000)
 
 
 class Stock(BaseModel):
@@ -80,22 +60,32 @@ class Stock(BaseModel):
     symbol = TextField(unique=True)
     name = TextField(null=True)
 
-    def get_price(self, end_timestamp=None, interval_type=IntervalType.DAY.value):
+    def get_price(self, to_timestamp=None, interval_type=IntervalType.DAY.value):
+        def _get_from_for_to(to_timestamp, interval_type):
+            if interval_type == IntervalType.DAY.value:
+                # Convert milliseconds to seconds
+                to_timestamp = to_timestamp / 1000
+                # Convert to datetime object
+                day = datetime.fromtimestamp(to_timestamp).date()
+                from_timestamp = int(datetime.combine(day, time.min).timestamp() * 1000)
+                return from_timestamp
+            raise ValueError("Not implemented. {interval_type}.")
+
         try:
             where_clause = True
-            time_interval = "Without time interval constraints."
-            if end_timestamp:
-                start_timestamp = _get_start_of_timestamp(end_timestamp, interval_type)
-                where_clause = (Price.timestamp >= start_timestamp) & (Price.timestamp <= end_timestamp)
-                time_interval = f"Between {_as_timestamp_str(start_timestamp)} and {_as_timestamp_str(end_timestamp)}."
+            from_and_to_str = "Without from and to constraints."
+            if to_timestamp:
+                from_timestamp = _get_from_for_to(to_timestamp, interval_type)
+                where_clause = (Price.timestamp >= from_timestamp) & (Price.timestamp <= to_timestamp)
+                from_and_to_str = f"From {_as_timestamp_str(from_timestamp)} to {_as_timestamp_str(to_timestamp)}."
             price = self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
             if price:
                 log.debug(
                     f"{self.symbol}'s most recent price is from {_as_timestamp_str(price.timestamp)}. "
-                    f"{price.adjusted_close:.2f}"
+                    f"{price.adjusted_close:.2f}, {from_and_to_str}"
                 )
             else:
-                log.debug(f"{self.symbol} has no prices. {time_interval}")
+                log.debug(f"{self.symbol} has no prices. {from_and_to_str}")
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to get the price for {self.symbol}: {type(e).__name__} : {e}")
@@ -125,6 +115,10 @@ class Stock(BaseModel):
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to add price for {self.symbol}: {type(e).__name__} : {e}")
             raise e
+
+    def get_eod_price(self, day=None):
+        to_timestamp = get_eod_timestamp(day)
+        return self.get_price(to_timestamp, IntervalType.DAY.value)
 
 
 class Price(BaseModel):
@@ -249,11 +243,11 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_cash(self, end_timestamp=None, interval_type=IntervalType.DAY.value):
+    def get_cash(self, to_timestamp=None, interval_type=IntervalType.DAY.value):
         try:
             where_clause = True
-            if end_timestamp:
-                where_clause = Balance.timestamp <= end_timestamp
+            if to_timestamp:
+                where_clause = Balance.timestamp <= to_timestamp
             balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
                 log.debug(
@@ -287,7 +281,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_position(self, symbol, end_timestamp=None, interval_type=IntervalType.DAY.value):
+    def get_position(self, symbol, to_timestamp=None, interval_type=IntervalType.DAY.value):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
@@ -295,12 +289,12 @@ class Portfolio(BaseModel):
                 log.debug(f"Stock {symbol} does not exist in the database.")
                 return None
             where_clause = Position.stock == stock
-            if end_timestamp:
-                where_clause &= Position.timestamp <= end_timestamp
+            if to_timestamp:
+                where_clause &= Position.timestamp <= to_timestamp
             position = self.positions.where(where_clause).order_by(Position.timestamp.desc()).first()
             if position:
                 # Fetch the latest price up to the specified timestamp
-                latest_price = stock.get_price(end_timestamp)
+                latest_price = stock.get_price(to_timestamp)
                 if latest_price:
                     position.market_price = latest_price.adjusted_close
                     log.debug(
@@ -552,29 +546,23 @@ class Portfolio(BaseModel):
             log.error(f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
             raise e
 
-    def get_eod_balance(self, timestamp=None):
-        if not timestamp:
-            timestamp = int(datetime.now().timestamp() * 1000)
-        day = datetime.fromtimestamp(timestamp / 1000).date()
-        end_timestamp = _get_end_of_timestamp(timestamp, IntervalType.DAY.value)
+    def get_eod_balance(self, day=None):
+        to_timestamp = get_eod_timestamp(day)
 
         try:
-            cash = self.get_cash(end_timestamp, IntervalType.DAY.value)
+            cash = self.get_cash(to_timestamp, IntervalType.DAY.value)
             log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_eod_position(self, symbol, timestamp=None):
-        if not timestamp:
-            timestamp = int(datetime.now().timestamp() * 1000)
-        day = datetime.fromtimestamp(timestamp / 1000).date()
-        end_timestamp = _get_end_of_timestamp(timestamp, IntervalType.DAY.value)
+    def get_eod_position(self, symbol, day=None):
+        to_timestamp = get_eod_timestamp(day)
 
         try:
             symbol = _as_validated_symbol(symbol)
-            position = self.get_position(symbol, end_timestamp, IntervalType.DAY.value)
+            position = self.get_position(symbol, to_timestamp, IntervalType.DAY.value)
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "

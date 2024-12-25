@@ -41,12 +41,12 @@ class IntervalType(Enum):
     SECOND = "SECOND"
 
 
-def _as_timestamp_str(timestamp):
-    if timestamp:
-        timestamp = timestamp / 1000  # convert to seconds
-        dt = datetime.fromtimestamp(timestamp)
-        return dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    return "None"
+def strtimestamp(timestamp):
+    if not timestamp:
+        return None
+    timestamp = timestamp / 1000  # convert to seconds
+    dt = datetime.fromtimestamp(timestamp)
+    return dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 
 def get_eod_timestamp(day):
@@ -77,11 +77,11 @@ class Stock(BaseModel):
             if to_timestamp:
                 from_timestamp = _get_from_for_to(to_timestamp, interval_type)
                 where_clause = (Price.timestamp >= from_timestamp) & (Price.timestamp <= to_timestamp)
-                from_and_to_str = f"From {_as_timestamp_str(from_timestamp)} to {_as_timestamp_str(to_timestamp)}."
+                from_and_to_str = f"From {strtimestamp(from_timestamp)} to {strtimestamp(to_timestamp)}."
             price = self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
             if price:
                 log.debug(
-                    f"{self.symbol}'s most recent price is from {_as_timestamp_str(price.timestamp)}. "
+                    f"{self.symbol}'s most recent price is from {strtimestamp(price.timestamp)}. "
                     f"{price.adjusted_close:.2f}, {from_and_to_str}"
                 )
             else:
@@ -96,7 +96,7 @@ class Stock(BaseModel):
             if volume < 0:
                 raise ValueError("Volume cannot be negative.")
 
-            log.debug(f"Adding price for {self.symbol} on {_as_timestamp_str(timestamp)}.")
+            log.debug(f"Adding price for {self.symbol} on {strtimestamp(timestamp)}.")
 
             # TODO: switch to get_or_create
             price = Price.create(
@@ -110,7 +110,7 @@ class Stock(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(f"Added price for {self.symbol} on {_as_timestamp_str(timestamp)} successfully.")
+            log.debug(f"Added price for {self.symbol} on {strtimestamp(timestamp)} successfully.")
             return price
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to add price for {self.symbol}: {type(e).__name__} : {e}")
@@ -251,7 +251,7 @@ class Portfolio(BaseModel):
             balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
                 log.debug(
-                    f"Portfolio {self.name}'s most recent cash balance is from {_as_timestamp_str(balance.timestamp)}. "
+                    f"Portfolio {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. "
                     f"Cash: {balance.cash:.2f}."
                 )
                 return balance.cash
@@ -262,9 +262,9 @@ class Portfolio(BaseModel):
             log.error(f"Failed to get cash balance for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def _update_balance(self, timestamp, amount):
+    def update_balance(self, timestamp, amount):
         try:
-            log.debug(f"Updating cash balance in portfolio {self.name} at {_as_timestamp_str(timestamp)} with {amount}.")
+            log.debug(f"Updating cash balance in portfolio {self.name} at {strtimestamp(timestamp)} with {amount}.")
 
             current_balance = self.get_cash()
             new_balance = current_balance + amount
@@ -299,14 +299,14 @@ class Portfolio(BaseModel):
                     position.market_price = latest_price.adjusted_close
                     log.debug(
                         f"Updated market price for {symbol} to {position.market_price:.2f} "
-                        f"based on price from {_as_timestamp_str(latest_price.timestamp)}."
+                        f"based on price from {strtimestamp(latest_price.timestamp)}."
                     )
                 else:
                     # Handle the case where no price is available
                     log.debug(f"No available market price for {symbol}.")
 
                 log.debug(
-                    f"Portfolio {self.name}'s most recent {symbol} position is from {_as_timestamp_str(position.timestamp)}."
+                    f"Portfolio {self.name}'s most recent {symbol} position is from {strtimestamp(position.timestamp)}."
                     f"Size:{position.size}. "
                     f"Average Price:{position.average_price:.2f}. "
                     f"Market Price:{position.market_price:.2f}"
@@ -319,7 +319,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to get position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def _update_position(self, timestamp, symbol, quantity, price):
+    def update_position(self, timestamp, symbol, quantity, price):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
@@ -327,7 +327,7 @@ class Portfolio(BaseModel):
                 raise ValueError(f"Stock {symbol} does not exist in the database.")
 
             log.debug(
-                f"Updating portfolio {self.name}'s {symbol} position at {_as_timestamp_str(timestamp)} "
+                f"Updating portfolio {self.name}'s {symbol} position at {strtimestamp(timestamp)} "
                 f"with {quantity} shares at {price:.2f} each."
             )
 
@@ -371,7 +371,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def _update_cash_ledger(self, external_id, timestamp, type, fees, amount):
+    def update_cash_ledger(self, external_id, timestamp, type, fees, amount):
         # Record Cash Transaction
         CashLedger.create(
             external_id=external_id,
@@ -382,7 +382,7 @@ class Portfolio(BaseModel):
             fees=fees,
         )
 
-    def _update_transaction_ledger(self, external_id, timestamp, type, symbol, fees, quantity, price):
+    def update_transaction_ledger(self, external_id, timestamp, type, symbol, fees, quantity, price):
         # Record Transaction
         stock = Stock.get(Stock.symbol == symbol)
         TransactionLedger.create(
@@ -400,9 +400,9 @@ class Portfolio(BaseModel):
         try:
             log.info(f"Depositing {amount} into portfolio {self.name}.")
             with db.atomic():
-                self._update_cash_ledger(external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount)
+                self.update_cash_ledger(external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount)
                 total_amount_to_deposit = amount - fees
-                self._update_balance(timestamp, total_amount_to_deposit)
+                self.update_balance(timestamp, total_amount_to_deposit)
 
             log.info(f"Deposited {amount} into portfolio {self.name}.")
             return self
@@ -423,8 +423,8 @@ class Portfolio(BaseModel):
                         f"exceeds available cash {current_balance} in portfolio {self.name}."
                     )
 
-                self._update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
-                self._update_balance(timestamp, -total_amount_to_withdraw)
+                self.update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
+                self.update_balance(timestamp, -total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} from portfolio {self.name}.")
             return self
@@ -452,13 +452,13 @@ class Portfolio(BaseModel):
 
                 # Add symbol to watchlist
                 self.start_watching(symbol)
-                self._update_transaction_ledger(
+                self.update_transaction_ledger(
                     external_id, timestamp, TransactionType.BUY.value, symbol, fees, quantity, price
                 )
                 # Update cash balance
-                self._update_balance(timestamp, -total_cost)
+                self.update_balance(timestamp, -total_cost)
                 # Update position
-                self._update_position(timestamp, symbol, quantity, price)
+                self.update_position(timestamp, symbol, quantity, price)
 
             log.info(
                 f"Bought {quantity} shares of {symbol} at ${price:.2f} each. "
@@ -488,16 +488,16 @@ class Portfolio(BaseModel):
                         f"for depositing {quantity} shares of {symbol}."
                     )
 
-                self._update_transaction_ledger(
+                self.update_transaction_ledger(
                     external_id, timestamp, TransactionType.DEPOSIT_IN_KIND.value, symbol, fees, quantity, cost_basis_per_share
                 )
                 # Update cash balance to cover fees
                 if total_fees > 0:
-                    self._update_balance(timestamp, -total_fees)
+                    self.update_balance(timestamp, -total_fees)
                 # Add symbol to watchlist
                 self.start_watching(symbol)
                 # Update position
-                self._update_position(timestamp, symbol, quantity, cost_basis_per_share)
+                self.update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
             log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. " f"Fees: ${fees:.2f}.")
             return self
@@ -524,15 +524,15 @@ class Portfolio(BaseModel):
                         f"Request to sell {quantity} shares of {symbol} exceeds current position of {position.size} shares."
                     )
 
-                self._update_transaction_ledger(
+                self.update_transaction_ledger(
                     external_id, timestamp, TransactionType.SELL.value, symbol, fees, quantity, price
                 )
 
                 total_proceeds = quantity * price - fees
                 # Update cash balance
-                self._update_balance(timestamp, total_proceeds)
+                self.update_balance(timestamp, total_proceeds)
                 # Update position
-                position = self._update_position(timestamp, symbol, -quantity, price)
+                position = self.update_position(timestamp, symbol, -quantity, price)
                 if position.size == 0.0:
                     # Position was liquidated, stop watching
                     self.stop_watching(symbol)
@@ -566,7 +566,7 @@ class Portfolio(BaseModel):
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
-                    f"as of {_as_timestamp_str(position.timestamp)}, is {position.size} shares."
+                    f"as of {strtimestamp(position.timestamp)}, is {position.size} shares."
                     f"Average Price: {position.average_price:.2f}. Market Price: {position.market_price:.2f}."
                 )
             else:

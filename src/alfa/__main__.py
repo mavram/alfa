@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
         tsla.get_eod_price()
         tsla.get_eod_price(date(2024, 12, 2))
-        tsla.get_price(get_timestamp(4, 17, 00))
+        tsla.get_eod_price(date(2024, 12, 4))
 
         # try:
         #     portfolio.deposit(1, get_timestamp(2, 11, 11), 10000)

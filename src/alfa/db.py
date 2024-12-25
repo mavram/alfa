@@ -9,19 +9,14 @@ from alfa.config import log, settings
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
-def _create_directories_for_path(path):
+def open_db():
+    path = settings.DB_PATH
+    log.debug(f"Initializing database at {path}.")
     # Extract the directory portion of the path
     directory = os.path.dirname(path)
     # Create directories if they are missing
     if directory:  # Avoid creating root directory if path is just a file name
         os.makedirs(directory, exist_ok=True)
-
-
-def open_db():
-    path = settings.DB_PATH
-
-    log.debug(f"Initializing database at {path}.")
-    _create_directories_for_path(path)
     db.init(path)
     return db
 

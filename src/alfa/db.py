@@ -646,5 +646,6 @@ class Balance(BaseModel):
 
 
 """
-[ ] import transactions (deposit, withdraw, buy, sell, ...) from files
+[ ] prices from exchange
+[ ] transactions (deposit, withdraw, buy, sell, ...) from files
 """

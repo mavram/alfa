@@ -238,7 +238,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_cash(self, to_timestamp=None, interval_type=IntervalType.DAY.value):
+    def get_cash(self, to_timestamp=None):
         try:
             where_clause = True
             if to_timestamp:
@@ -276,7 +276,7 @@ class Portfolio(BaseModel):
             log.error(f"Failed to update cash balance in portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
-    def get_position(self, symbol, to_timestamp=None, interval_type=IntervalType.DAY.value):
+    def get_position(self, symbol, to_timestamp=None):
         try:
             symbol = _as_validated_symbol(symbol)
             stock = Stock.get_or_none(Stock.symbol == symbol)
@@ -545,7 +545,7 @@ class Portfolio(BaseModel):
         to_timestamp = get_eod_timestamp(day)
 
         try:
-            cash = self.get_cash(to_timestamp, IntervalType.DAY.value)
+            cash = self.get_cash(to_timestamp)
             log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
@@ -557,7 +557,7 @@ class Portfolio(BaseModel):
 
         try:
             symbol = _as_validated_symbol(symbol)
-            position = self.get_position(symbol, to_timestamp, IntervalType.DAY.value)
+            position = self.get_position(symbol, to_timestamp)
             if position:
                 log.debug(
                     f"Portfolio {self.name}'s {day} end of day position for {symbol}, "

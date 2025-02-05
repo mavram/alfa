@@ -5,7 +5,7 @@ portfolio_name = "alpha"
 log_level = "DEBUG"
 db_path = "data/dev-alpha.db"
 
-[testing]
+[test]
 log_level = "WARNING"
 db_path = "data/test-alpha.db"
 

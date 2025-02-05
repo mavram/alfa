@@ -2,27 +2,40 @@
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry]
+# [tool.poetry]
+# name = "alfa"
+# version = "0.0.1"
+# description = "A minimalist platform for running trading strategies."
+# authors = [{"Mircea Avram <mavram@gmail.com>"]
+# readme = "README.md"
+# license = "MIT"
+# classifiers = [
+#     "Programming Language :: Python :: 3",
+#     "License :: OSI Approved :: MIT License",
+# ]
+# keywords = []
+# repository = "https://github.com/mavram/alfa"
+# include = ["settings.toml", "tests"]
+
+[project]
 name = "alfa"
 version = "0.0.1"
 description = "A minimalist platform for running trading strategies."
-authors = ["Mircea Avram <mavram@gmail.com>"]
+authors = [{ name = "Mircea Avram", email = "mavram@gmail.com" }]
 readme = "README.md"
-license = "MIT"
+license = { text = "MIT" }
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
 ]
-keywords = []
+dependencies = ["dynaconf>=3.2.6", "yfinance>=0.2.50", "peewee>=3.17.8"]
+
+[project.urls]
 repository = "https://github.com/mavram/alfa"
+
+[tool.poetry]
 include = ["settings.toml", "tests"]
-
-
-[tool.poetry.dependencies]
-python = "^3.12"
-dynaconf = "^3.2.6"
-yfinance = "^0.2.50"
-peewee = "^3.17.8"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"

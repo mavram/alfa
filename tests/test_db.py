@@ -156,11 +156,7 @@ def test_start_watching_new_stock(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD")
     stock = portfolio.start_watching(symbol="AAPL", name="Apple Inc.")
     assert stock.symbol == "AAPL"
-    assert (
-        StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    )
+    assert StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
 
 
 def test_start_watching_existing_stock(test_db):
@@ -177,11 +173,7 @@ def test_stop_watching(test_db):
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     StockToWatch.create(portfolio=portfolio, stock=stock)
     portfolio.stop_watching("AAPL")
-    assert (
-        not StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    )
+    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
 
 
 def test_stop_watching_unknown_stock(test_db):
@@ -223,23 +215,14 @@ def test_withdraw_exceeds_balance(test_db):
 def test_buy_insufficient_cash(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=100.0)
     with pytest.raises(ValueError):
-        portfolio.buy(
-            external_id="buy1", timestamp=1638316800, symbol="AAPL", quantity=10, price=15.0, fees=10.0
-        )
+        portfolio.buy(external_id="buy1", timestamp=1638316800, symbol="AAPL", quantity=10, price=15.0, fees=10.0)
 
 
 def test_buy_successful(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=1000.0)
-    portfolio.buy(
-        external_id="buy1", timestamp=1638316800, symbol="AAPL", quantity=10, price=50.0, fees=10.0
-    )
+    portfolio.buy(external_id="buy1", timestamp=1638316800, symbol="AAPL", quantity=10, price=50.0, fees=10.0)
     assert portfolio.cash == 1000.0 - (10 * 50.0 + 10.0)
-    position = (
-        Position.select()
-        .join(Stock)
-        .where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL"))
-        .get()
-    )
+    position = Position.select().join(Stock).where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL")).get()
     assert position.size == 10
     assert position.average_price == 50.0
     transaction = TransactionLedger.get(TransactionLedger.external_id == "buy1")
@@ -251,18 +234,14 @@ def test_buy_successful(test_db):
 def test_sell_no_position(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=1000.0)
     with pytest.raises(ValueError):
-        portfolio.sell(
-            external_id="sell1", timestamp=1638316800, symbol="AAPL", quantity=5, price=55.0, fees=5.0
-        )
+        portfolio.sell(external_id="sell1", timestamp=1638316800, symbol="AAPL", quantity=5, price=55.0, fees=5.0)
 
 
 def test_sell_successful(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=1000.0)
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     Position.create(portfolio=portfolio, stock=stock, size=10, average_price=50.0)
-    portfolio.sell(
-        external_id="sell1", timestamp=1638316800, symbol="AAPL", quantity=5, price=55.0, fees=5.0
-    )
+    portfolio.sell(external_id="sell1", timestamp=1638316800, symbol="AAPL", quantity=5, price=55.0, fees=5.0)
     assert portfolio.cash == 1000.0 + (5 * 55.0 - 5.0)
     position = Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
     assert position.size == 5
@@ -277,17 +256,11 @@ def test_sell_entire_position(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD", cash=1000.0)
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     Position.create(portfolio=portfolio, stock=stock, size=10, average_price=50.0)
-    portfolio.sell(
-        external_id="sell2", timestamp=1638316800, symbol="AAPL", quantity=10, price=55.0, fees=5.0
-    )
+    portfolio.sell(external_id="sell2", timestamp=1638316800, symbol="AAPL", quantity=10, price=55.0, fees=5.0)
     assert portfolio.cash == 1000.0 + (10 * 55.0 - 5.0)
     with pytest.raises(Position.DoesNotExist):
         Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
-    assert (
-        not StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    )
+    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
     transaction = TransactionLedger.get(TransactionLedger.external_id == "sell2")
     assert transaction.quantity == -10
     assert transaction.type == TransactionType.SELL.value
@@ -346,12 +319,7 @@ def test_deposit_in_kind_successful(test_db):
         fees=10.0,
     )
     assert portfolio.cash == 1000.0 - 10.0
-    position = (
-        Position.select()
-        .join(Stock)
-        .where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL"))
-        .get()
-    )
+    position = Position.select().join(Stock).where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL")).get()
     assert position.size == 10
     assert position.average_price == 50.0
     transaction = TransactionLedger.get(TransactionLedger.external_id == "dik1")
@@ -391,11 +359,7 @@ def test_stop_watching_with_active_position(test_db):
     StockToWatch.create(portfolio=portfolio, stock=stock)
     Position.create(portfolio=portfolio, stock=stock, size=10, average_price=50.0)
     portfolio.stop_watching("AAPL")
-    assert (
-        StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    )
+    assert StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
 
 
 def test_stop_watching_without_position(test_db):
@@ -403,11 +367,7 @@ def test_stop_watching_without_position(test_db):
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     StockToWatch.create(portfolio=portfolio, stock=stock)
     portfolio.stop_watching("AAPL")
-    assert (
-        not StockToWatch.select()
-        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
-        .exists()
-    )
+    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
 
 
 def test_create_or_update_position_addition(test_db):

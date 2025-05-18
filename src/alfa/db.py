@@ -155,14 +155,13 @@ def _as_validated_symbol(symbol):
 class Portfolio(BaseModel):
     id = IntegerField(primary_key=True)
     name = TextField(unique=True)
-    currency = TextField(choices=[c.value for c in CurrencyType])
 
     @staticmethod
-    def initialize(name, currency=CurrencyType.USD):
+    def init(name):
         try:
-            portfolio, created = Portfolio.get_or_create(name=name, defaults={"currency": currency.value})
+            portfolio, created = Portfolio.get_or_create(name=name)
             if created:
-                log.debug(f"Created portfolio {name} using currency {currency.value}.")
+                log.debug(f"Created portfolio {name}.")
             return portfolio
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to add portfolio {name}: {type(e).__name__} : {e}")
@@ -238,6 +237,66 @@ class Portfolio(BaseModel):
             log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
             raise e
 
+    def add_account(self, name, currency=CurrencyType.USD):
+        try:
+            # TODO: validate inputs
+
+            log.debug(f"Adding account {name} in {currency} to portfolio {self.name}.")
+
+            # TODO: switch to get_or_create
+            account = Account.create(
+                portfolio=self,
+                name=name,
+                currency=currency.value,
+            )
+            log.debug(f"Adding account {name} to portfolio {self.name}.")
+            return account
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to add account {name}: {type(e).__name__} : {e}")
+            raise e
+
+    def get_accounts(self):
+        return self.accounts
+
+    def get_account(self, name, currency):
+        try:
+            # TODO: validate inputs
+
+            account = Account.get_or_none(
+                (Account.portfolio == self) & (Account.name == name) & (Account.currency == currency.value)
+            )
+
+            return account
+        except Exception as e:  # pragma: no cover
+            log.error(f"Failed to get account {name} in {currency}: {type(e).__name__} : {e}")
+            raise e
+
+
+class StockToWatch(BaseModel):
+    id = IntegerField(primary_key=True)
+    portfolio = ForeignKeyField(Portfolio, backref="watchlist", on_delete="CASCADE")
+    stock = ForeignKeyField(Stock, on_delete="CASCADE")
+
+    class Meta:
+        table_name = "stock_to_watch"
+        indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
+
+
+class Account(BaseModel):
+    id = IntegerField(primary_key=True)
+    portfolio = ForeignKeyField(Portfolio, backref="accounts", on_delete="CASCADE")
+    name = TextField()
+    currency = TextField(choices=[c.value for c in CurrencyType])
+
+    class Meta:
+        table_name = "account"
+        indexes = (
+            (
+                ("portfolio", "name", "currency"),
+                True,
+            ),
+        )  # Unique constraint on portfolio, name, and currency
+
     def get_cash(self, to_timestamp=None):
         try:
             where_clause = True
@@ -246,34 +305,34 @@ class Portfolio(BaseModel):
             balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
                 log.debug(
-                    f"Portfolio {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. "
+                    f"Account {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. "
                     f"Cash: {balance.cash:.2f}."
                 )
                 return balance.cash
 
-            log.debug(f"Portfolio {self.name} has no balances.")
+            log.debug(f"Account {self.name} has no balances.")
             return 0.0
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get cash balance for portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to get cash balance for account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def update_balance(self, timestamp, amount):
         try:
-            log.debug(f"Updating cash balance in portfolio {self.name} at {strtimestamp(timestamp)} with {amount}.")
+            log.debug(f"Updating cash balance in account {self.name} at {strtimestamp(timestamp)} with {amount}.")
 
             current_balance = self.get_cash()
             new_balance = current_balance + amount
             if new_balance < 0:
-                raise ValueError(f"Insufficient funds in portfolio {self.name} to update by {amount:.2f} amount.")
+                raise ValueError(f"Insufficient funds in account {self.name} to update by {amount:.2f} amount.")
 
-            Balance.create(portfolio=self, timestamp=timestamp, cash=new_balance)
+            Balance.create(account=self, timestamp=timestamp, cash=new_balance)
 
             log.debug(
-                f"Updated cash balance in portfolio {self.name}: "
+                f"Updated cash balance in account {self.name}: "
                 f"Previous Balance={current_balance:.2f}. New Balance={new_balance:.2f}"
             )
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to update cash balance in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to update cash balance in account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def get_position(self, symbol, to_timestamp=None):
@@ -301,17 +360,17 @@ class Portfolio(BaseModel):
                     log.debug(f"No available market price for {symbol}.")
 
                 log.debug(
-                    f"Portfolio {self.name}'s most recent {symbol} position is from {strtimestamp(position.timestamp)}."
+                    f"Account {self.name}'s most recent {symbol} position is from {strtimestamp(position.timestamp)}."
                     f"Size:{position.size}. "
                     f"Average Price:{position.average_price:.2f}. "
                     f"Market Price:{position.market_price:.2f}"
                 )
                 if position.size > 0.0:
                     return position
-            log.debug(f"Portfolio {self.name} has no position in {symbol}.")
+            log.debug(f"Account {self.name} has no position in {symbol}.")
             return None
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to get position for {symbol} in account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def update_position(self, timestamp, symbol, quantity, price):
@@ -322,7 +381,7 @@ class Portfolio(BaseModel):
                 raise ValueError(f"Stock {symbol} does not exist in the database.")
 
             log.debug(
-                f"Updating portfolio {self.name}'s {symbol} position at {strtimestamp(timestamp)} "
+                f"Updating account {self.name}'s {symbol} position at {strtimestamp(timestamp)} "
                 f"with {quantity} shares at {price:.2f} each."
             )
 
@@ -336,7 +395,7 @@ class Portfolio(BaseModel):
                 raise ValueError(f"Cannot remove {abs(quantity)} shares from {symbol}; only {current_size} available.")
 
             if new_size == 0:
-                log.debug(f"Liquidating position for {symbol} in portfolio {self.name}.")
+                log.debug(f"Liquidating position for {symbol} in account {self.name}.")
                 new_average_price = 0.0
                 new_market_price = 0.0
             else:
@@ -347,7 +406,7 @@ class Portfolio(BaseModel):
                     new_average_price = total_cost / new_size
 
             new_position = Position.create(
-                portfolio=self,
+                account=self,
                 stock=stock,
                 timestamp=timestamp,
                 size=new_size,
@@ -356,21 +415,21 @@ class Portfolio(BaseModel):
             )
 
             log.debug(
-                f"Updated portfolio {self.name}'s {symbol} position: "
+                f"Updated account {self.name}'s {symbol} position: "
                 f"Size={new_position.size}, Average Price={new_position.average_price:.2f}. "
                 f"Market Price={new_position.market_price:.2f}."
             )
 
             return new_position
         except Exception as e:  # pragma: no covers
-            log.error(f"Failed to create position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to create position for {symbol} in account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def update_cash_ledger(self, external_id, timestamp, type, fees, amount):
         # Record Cash Transaction
         CashLedger.create(
             external_id=external_id,
-            portfolio=self,
+            account=self,
             timestamp=timestamp,
             amount=amount,
             type=type,
@@ -382,7 +441,7 @@ class Portfolio(BaseModel):
         stock = Stock.get(Stock.symbol == symbol)
         TransactionLedger.create(
             external_id=external_id,
-            portfolio=self,
+            account=self,
             timestamp=timestamp,
             stock=stock,
             quantity=quantity,
@@ -393,21 +452,21 @@ class Portfolio(BaseModel):
 
     def deposit(self, external_id, timestamp, amount, fees=0.0):
         try:
-            log.info(f"Depositing {amount} into portfolio {self.name}.")
+            log.info(f"Depositing {amount} into account {self.name}.")
             with db.atomic():
                 self.update_cash_ledger(external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount)
                 total_amount_to_deposit = amount - fees
                 self.update_balance(timestamp, total_amount_to_deposit)
 
-            log.info(f"Deposited {amount} into portfolio {self.name}.")
+            log.info(f"Deposited {amount} into account {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to deposit {amount} into portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to deposit {amount} into account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def withdraw(self, external_id, timestamp, amount, fees=0.0):
         try:
-            log.info(f"Withdrawing {amount} from portfolio {self.name}.")
+            log.info(f"Withdrawing {amount} from account {self.name}.")
 
             with db.atomic():
                 total_amount_to_withdraw = amount + fees
@@ -415,21 +474,21 @@ class Portfolio(BaseModel):
                 if total_amount_to_withdraw > current_balance:
                     raise ValueError(
                         f"Withdrawal amount {amount} and fees {fees} "
-                        f"exceeds available cash {current_balance} in portfolio {self.name}."
+                        f"exceeds available cash {current_balance} in account {self.name}."
                     )
 
                 self.update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
                 self.update_balance(timestamp, -total_amount_to_withdraw)
 
-            log.info(f"Withdrew {amount} from portfolio {self.name}.")
+            log.info(f"Withdrew {amount} from account {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to withdraw {amount} from portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(f"Failed to withdraw {amount} from account {self.name}: {type(e).__name__} : {e}")
             raise e
 
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         try:
-            log.info(f"Buying {quantity} shares of {symbol} at ${price:.2f} each in portfolio {self.name}.")
+            log.info(f"Buying {quantity} shares of {symbol} at ${price:.2f} each in account {self.name}.")
 
             symbol = _as_validated_symbol(symbol)
 
@@ -442,11 +501,11 @@ class Portfolio(BaseModel):
                         f"Required: {total_cost}. Available: {current_balance}."
                     )
                     raise ValueError(
-                        f"Portfolio {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}."
+                        f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}."
                     )
 
                 # Add symbol to watchlist
-                self.start_watching(symbol)
+                self.portfolio.start_watching(symbol)
                 self.update_transaction_ledger(
                     external_id, timestamp, TransactionType.BUY.value, symbol, fees, quantity, price
                 )
@@ -479,7 +538,7 @@ class Portfolio(BaseModel):
                         f"Required Fees: ${total_fees:.2f}. Available Cash: ${current_balance:.2f}."
                     )
                     raise ValueError(
-                        f"Portfolio {self.name} does not have sufficient cash to cover fees "
+                        f"Account {self.name} does not have sufficient cash to cover fees "
                         f"for depositing {quantity} shares of {symbol}."
                     )
 
@@ -490,7 +549,7 @@ class Portfolio(BaseModel):
                 if total_fees > 0:
                     self.update_balance(timestamp, -total_fees)
                 # Add symbol to watchlist
-                self.start_watching(symbol)
+                self.portfolio.start_watching(symbol)
                 # Update position
                 self.update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
@@ -511,7 +570,7 @@ class Portfolio(BaseModel):
             with db.atomic():
                 position = self.get_position(symbol)
                 if not position:
-                    log.error(f"Portfolio {self.name} has no position in {symbol}.")
+                    log.error(f"Account {self.name} has no position in {symbol}.")
                     raise ValueError(f"No active position in {symbol} to sell.")
 
                 if quantity > position.size:
@@ -530,7 +589,7 @@ class Portfolio(BaseModel):
                 position = self.update_position(timestamp, symbol, -quantity, price)
                 if position.size == 0.0:
                     # Position was liquidated, stop watching
-                    self.stop_watching(symbol)
+                    self.portoflio.stop_watching(symbol)
 
             log.info(
                 f"Sold {quantity} shares of {symbol} at ${price:.2f} each. "
@@ -546,7 +605,7 @@ class Portfolio(BaseModel):
 
         try:
             cash = self.get_cash(to_timestamp)
-            log.debug(f"Portfolio {self.name}'s {day} end of day balance is {cash:.2f}.")
+            log.debug(f"Account {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {type(e).__name__} : {e}")
@@ -560,34 +619,24 @@ class Portfolio(BaseModel):
             position = self.get_position(symbol, to_timestamp)
             if position:
                 log.debug(
-                    f"Portfolio {self.name}'s {day} end of day position for {symbol}, "
+                    f"Account {self.name}'s {day} end of day position for {symbol}, "
                     f"as of {strtimestamp(position.timestamp)}, is {position.size} shares."
                     f"Average Price: {position.average_price:.2f}. Market Price: {position.market_price:.2f}."
                 )
             else:
-                log.debug(f"Portfolio {self.name} has no {day} end of day positions for {symbol}.")
+                log.debug(f"Account {self.name} has no {day} end of day positions for {symbol}.")
             return position
         except Exception as e:  # pragma: no cover
             log.error(
-                f"Failed to retrieve {day} end of day position for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}"
+                f"Failed to retrieve {day} end of day position for {symbol} in account {self.name}: {type(e).__name__} : {e}"
             )
             raise e
-
-
-class StockToWatch(BaseModel):
-    id = IntegerField(primary_key=True)
-    portfolio = ForeignKeyField(Portfolio, backref="watchlist", on_delete="CASCADE")
-    stock = ForeignKeyField(Stock, on_delete="CASCADE")
-
-    class Meta:
-        table_name = "stock_to_watch"
-        indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
 
 
 class CashLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
-    portfolio = ForeignKeyField(Portfolio, backref="deposits_and_withdraws", on_delete="CASCADE")
+    account = ForeignKeyField(Account, backref="deposits_and_withdraws", on_delete="CASCADE")
     timestamp = BigIntegerField()  # Unix epoch time
     amount = FloatField()
     type = TextField(choices=[TransactionType.DEPOSIT, TransactionType.WITHDRAW])
@@ -601,7 +650,7 @@ class CashLedger(BaseModel):
 class TransactionLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
-    portfolio = ForeignKeyField(Portfolio, backref="transactions", on_delete="CASCADE")
+    account = ForeignKeyField(Account, backref="transactions", on_delete="CASCADE")
     timestamp = BigIntegerField(null=False)  # Unix epoch time
     stock = ForeignKeyField(Stock, on_delete="CASCADE")
     quantity = IntegerField()
@@ -623,7 +672,7 @@ class TransactionLedger(BaseModel):
 class Position(BaseModel):
     id = IntegerField(primary_key=True)
     timestamp = BigIntegerField(null=False)  # Unix epoch time
-    portfolio = ForeignKeyField(Portfolio, backref="positions", on_delete="CASCADE")
+    account = ForeignKeyField(Account, backref="positions", on_delete="CASCADE")
     stock = ForeignKeyField(Stock, on_delete="CASCADE")
     size = IntegerField()
     average_price = FloatField()
@@ -631,18 +680,18 @@ class Position(BaseModel):
 
     class Meta:
         table_name = "position"
-        indexes = ((("portfolio", "stock", "timestamp"), True),)  # Unique constraint on portfolio, timestamp, and stock
+        indexes = ((("account", "stock", "timestamp"), True),)  # Unique constraint on account, timestamp, and stock
 
 
 class Balance(BaseModel):
     id = IntegerField(primary_key=True)
     timestamp = BigIntegerField(null=False)  # Unix epoch time
-    portfolio = ForeignKeyField(Portfolio, backref="balances", on_delete="CASCADE")
+    account = ForeignKeyField(Account, backref="balances", on_delete="CASCADE")
     cash = FloatField(default=0.0)
 
     class Meta:
         table_name = "balance"
-        indexes = ((("portfolio", "timestamp"), True),)  # Unique constraint on portfolio and timestamp
+        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
 
 
 """

@@ -3,7 +3,7 @@ from datetime import date, datetime
 from peewee import IntegrityError
 
 from alfa.config import log
-from alfa.db import BaseModel, Portfolio, open_db
+from alfa.db import BaseModel, CurrencyType, Portfolio, open_db
 
 if __name__ == "__main__":
 
@@ -15,7 +15,14 @@ if __name__ == "__main__":
         db.connect()
         db.create_tables(BaseModel.get_models())
 
-        portfolio = Portfolio.initialize("Theta")
+        portfolio = Portfolio.init("Theta")
+
+        portfolio.add_account("TFSA", CurrencyType.USD)
+        portfolio.add_account("TFSA", CurrencyType.CAD)
+        print("Portfolio Accounts:")
+        for a in portfolio.get_accounts():
+            print(f"name: {a.name}, currency: {a.currency}")
+
         tsla = portfolio.start_watching("TSLA")
 
         try:
@@ -53,24 +60,26 @@ if __name__ == "__main__":
         tsla.get_eod_price(date(2024, 12, 2))
         tsla.get_eod_price(date(2024, 12, 4))
 
+        tfsa_usd = portfolio.get_account("TFSA", CurrencyType.USD)
+
         try:
-            portfolio.deposit(1, get_timestamp(2, 11, 11), 10000)
-            portfolio.withdraw(2, get_timestamp(3, 12, 12), 1000)
-            portfolio.buy(3, get_timestamp(3, 13, 13), "tsla", 5, 400)
-            portfolio.deposit_in_kind(4, get_timestamp(4, 11, 11), "tsla", 100, 200)
-            portfolio.sell(5, get_timestamp(4, 15, 15), "TSLA", 100, 500)
-            portfolio.buy(6, get_timestamp(5, 10, 10), "nvda", 10, 200)
+            tfsa_usd.deposit(1, get_timestamp(2, 11, 11), 10000)
+            tfsa_usd.withdraw(2, get_timestamp(3, 12, 12), 1000)
+            tfsa_usd.buy(3, get_timestamp(3, 13, 13), "tsla", 5, 400)
+            tfsa_usd.deposit_in_kind(4, get_timestamp(4, 11, 11), "tsla", 100, 200)
+            tfsa_usd.sell(5, get_timestamp(4, 15, 15), "TSLA", 100, 500)
+            tfsa_usd.buy(6, get_timestamp(5, 10, 10), "nvda", 10, 200)
         except IntegrityError as e:
             print(f"{type(e).__name__} : {e}")
 
-        portfolio.get_cash()
-        portfolio.get_position("TSLA")
-        portfolio.get_position("NVDA")
-        portfolio.get_position("MSFT")
+        tfsa_usd.get_cash()
+        tfsa_usd.get_position("TSLA")
+        tfsa_usd.get_position("NVDA")
+        tfsa_usd.get_position("MSFT")
 
-        portfolio.get_eod_position("TSLA")
-        portfolio.get_eod_position("NVDA")
-        portfolio.get_eod_balance()
+        tfsa_usd.get_eod_position("TSLA")
+        tfsa_usd.get_eod_position("NVDA")
+        tfsa_usd.get_eod_balance()
 
         watchlist = portfolio.get_watchlist()
         print("Portfolio Watchlist:")

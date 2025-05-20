@@ -2,7 +2,6 @@ import os
 
 import pytest
 
-from alfa.config import settings
 from alfa.db import (
     BaseModel,
     CashLedger,
@@ -18,17 +17,19 @@ from alfa.db import (
     open_db,
 )
 
+db_path = "data/test.db"
+
 
 @pytest.fixture(scope="function")
 def test_db():
-    db = open_db()
+    db = open_db(db_path)
     db.connect()
     db.create_tables(BaseModel.get_models())
     yield db  # Provides the initialized database to the test
     db.drop_tables(BaseModel.get_models())
     db.close()
     # Remove test database
-    os.remove(settings.DB_PATH)
+    os.remove(db_path)
 
 
 def test_as_validated_symbol_valid():

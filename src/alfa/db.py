@@ -696,9 +696,3 @@ class Balance(BaseModel):
     class Meta:
         table_name = "balance"
         indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
-
-
-"""
-[ ] prices from exchange
-[ ] transactions (deposit, withdraw, buy, sell, ...) from files
-"""

@@ -14,13 +14,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
 ]
-dependencies = ["dynaconf>=3.2.6", "yfinance>=0.2.50", "peewee>=3.17.8"]
+dependencies = ["yfinance>=0.2.50", "peewee>=3.17.8"]
 
 [project.urls]
 repository = "https://github.com/mavram/alfa"
 
 [tool.poetry]
-include = ["settings.toml", "tests"]
+include = ["tests"]
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.10.0"

@@ -1,16 +1,18 @@
+import logging
 import os
 from datetime import datetime, time
 from enum import Enum
 
 from peewee import BigIntegerField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
 
-from alfa.config import log, settings
+log = logging.getLogger("alfa")
+logging.getLogger("peewee").setLevel(max(log.getEffectiveLevel(), logging.ERROR))
+
 
 db = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
-def open_db():
-    path = settings.DB_PATH
+def open_db(path):
     log.debug(f"Initializing database at {path}.")
     # Extract the directory portion of the path
     directory = os.path.dirname(path)
@@ -602,6 +604,7 @@ class Account(BaseModel):
 
     def get_eod_balance(self, day=None):
         to_timestamp = get_eod_timestamp(day)
+        day = datetime.fromtimestamp(to_timestamp / 1000).date()
 
         try:
             cash = self.get_cash(to_timestamp)
@@ -613,6 +616,7 @@ class Account(BaseModel):
 
     def get_eod_position(self, symbol, day=None):
         to_timestamp = get_eod_timestamp(day)
+        day = datetime.fromtimestamp(to_timestamp / 1000).date()
 
         try:
             symbol = _as_validated_symbol(symbol)

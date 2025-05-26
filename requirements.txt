@@ -1,0 +1,3 @@
+# runtime dependencies
+yfinance>=0.2.50
+peewee>=3.17.8

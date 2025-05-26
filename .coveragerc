@@ -1,0 +1,13 @@
+[run]
+omit =
+    */tests/*
+    */__init__.py
+    */__main__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    pass
+fail_under = 100

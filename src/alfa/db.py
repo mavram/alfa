@@ -3,7 +3,15 @@ import os
 from datetime import datetime, time
 from enum import Enum
 
-from peewee import BigIntegerField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+from peewee import (
+    BigIntegerField,
+    FloatField,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    SqliteDatabase,
+    TextField,
+)
 
 log = logging.getLogger("alfa")
 logging.getLogger("peewee").setLevel(max(log.getEffectiveLevel(), logging.ERROR))
@@ -509,7 +517,13 @@ class Account(BaseModel):
                 # Add symbol to watchlist
                 self.portfolio.start_watching(symbol)
                 self.update_transaction_ledger(
-                    external_id, timestamp, TransactionType.BUY.value, symbol, fees, quantity, price
+                    external_id,
+                    timestamp,
+                    TransactionType.BUY.value,
+                    symbol,
+                    fees,
+                    quantity,
+                    price,
                 )
                 # Update cash balance
                 self.update_balance(timestamp, -total_cost)
@@ -545,7 +559,13 @@ class Account(BaseModel):
                     )
 
                 self.update_transaction_ledger(
-                    external_id, timestamp, TransactionType.DEPOSIT_IN_KIND.value, symbol, fees, quantity, cost_basis_per_share
+                    external_id,
+                    timestamp,
+                    TransactionType.DEPOSIT_IN_KIND.value,
+                    symbol,
+                    fees,
+                    quantity,
+                    cost_basis_per_share,
                 )
                 # Update cash balance to cover fees
                 if total_fees > 0:
@@ -581,7 +601,13 @@ class Account(BaseModel):
                     )
 
                 self.update_transaction_ledger(
-                    external_id, timestamp, TransactionType.SELL.value, symbol, fees, quantity, price
+                    external_id,
+                    timestamp,
+                    TransactionType.SELL.value,
+                    symbol,
+                    fees,
+                    quantity,
+                    price,
                 )
 
                 total_proceeds = quantity * price - fees

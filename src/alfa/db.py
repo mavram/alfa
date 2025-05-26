@@ -223,15 +223,16 @@ class Portfolio(BaseModel):
                 log.debug(f"Portfolio {self.name} is not watching {symbol}.")
                 return
 
-            position = self.get_position(symbol)
-            if position:
-                log.debug(f"Cannot remove {symbol} from watchlist in portfolio {self.name} due to active position.")
-                return
+            for a in self.accounts:
+                position = a.get_position(symbol)
+                if position:
+                    log.debug(
+                        f"Cannot remove {symbol} from watchlist in portfolio {self.name} due to active position in account {a.name}."
+                    )
+                    return
 
             stock = Stock.get_or_none(Stock.symbol == symbol)
-            rows_deleted = (
-                StockToWatch.delete().where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self)).execute()
-            )
+            rows_deleted = StockToWatch.delete().where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self)).execute()
             if rows_deleted > 0:
                 log.debug(f"Removed {symbol} from watchlist in portfolio {self.name}.")
             else:  # pragma: no cover
@@ -510,9 +511,7 @@ class Account(BaseModel):
                         f"Insufficient cash to buy {quantity} shares of {symbol}. "
                         f"Required: {total_cost}. Available: {current_balance}."
                     )
-                    raise ValueError(
-                        f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}."
-                    )
+                    raise ValueError(f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}.")
 
                 # Add symbol to watchlist
                 self.portfolio.start_watching(symbol)
@@ -531,8 +530,7 @@ class Account(BaseModel):
                 self.update_position(timestamp, symbol, quantity, price)
 
             log.info(
-                f"Bought {quantity} shares of {symbol} at ${price:.2f} each. "
-                f"Total Cost: ${total_cost:.2f}. Fees: ${fees:.2f}."
+                f"Bought {quantity} shares of {symbol} at ${price:.2f} each. Total Cost: ${total_cost:.2f}. Fees: ${fees:.2f}."
             )
             return self
         except Exception as e:  # pragma: no cover
@@ -575,12 +573,10 @@ class Account(BaseModel):
                 # Update position
                 self.update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
-            log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. " f"Fees: ${fees:.2f}.")
+            log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. Fees: ${fees:.2f}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(
-                f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {type(e).__name__} : {e}"
-            )
+            log.error(f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {type(e).__name__} : {e}")
             raise e
 
     def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):

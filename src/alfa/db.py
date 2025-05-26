@@ -223,7 +223,7 @@ class Portfolio(BaseModel):
                 log.debug(f"Portfolio {self.name} is not watching {symbol}.")
                 return
 
-            for a in self.accounts:
+            for a in self.get_accounts():
                 position = a.get_position(symbol)
                 if position:
                     log.debug(

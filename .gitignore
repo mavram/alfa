@@ -169,3 +169,6 @@ data/
 
 # Ignore dynaconf secret files
 .secrets.*
+
+# Ignore macOS files
+.DS_Store

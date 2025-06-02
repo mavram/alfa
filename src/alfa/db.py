@@ -81,9 +81,13 @@ class Stock(BaseModel):
             from_and_to_str = "Without from and to constraints."
             if to_timestamp:
                 from_timestamp = _get_from_for_to(to_timestamp, interval_type)
-                where_clause = (Price.timestamp >= from_timestamp) & (Price.timestamp <= to_timestamp)
+                where_clause = (Price.timestamp >= from_timestamp) & (
+                    Price.timestamp <= to_timestamp
+                )
                 from_and_to_str = f"From {strtimestamp(from_timestamp)} to {strtimestamp(to_timestamp)}."
-            price = self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
+            price = (
+                self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
+            )
             if price:
                 log.debug(
                     f"{self.symbol}'s most recent price is from {strtimestamp(price.timestamp)}. "
@@ -93,7 +97,9 @@ class Stock(BaseModel):
                 log.debug(f"{self.symbol} has no prices. {from_and_to_str}")
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get the price for {self.symbol}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to get the price for {self.symbol}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def add_price(self, timestamp, open, high, low, close, adjusted_close, volume):
@@ -115,10 +121,14 @@ class Stock(BaseModel):
                 adjusted_close=adjusted_close,
                 volume=volume,
             )
-            log.debug(f"Added price for {self.symbol} on {strtimestamp(timestamp)} successfully.")
+            log.debug(
+                f"Added price for {self.symbol} on {strtimestamp(timestamp)} successfully."
+            )
             return price
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to add price for {self.symbol}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to add price for {self.symbol}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def get_eod_price(self, day=None):
@@ -140,7 +150,9 @@ class Price(BaseModel):
 
     class Meta:
         table_name = "price"
-        indexes = ((("stock", "timestamp"), True),)  # Unique constraint on stock and timestamp
+        indexes = (
+            (("stock", "timestamp"), True),
+        )  # Unique constraint on stock and timestamp
 
 
 class CurrencyType(Enum):
@@ -189,10 +201,16 @@ class Portfolio(BaseModel):
         try:
             symbol = _as_validated_symbol(symbol)
 
-            query = StockToWatch.select().join(Stock).where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
+            query = (
+                StockToWatch.select()
+                .join(Stock)
+                .where((Stock.symbol == symbol) & (StockToWatch.portfolio == self))
+            )
             return query.exists()
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to check watchlist for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to check watchlist for {symbol} in portfolio {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def start_watching(self, symbol, name=None):
@@ -212,7 +230,9 @@ class Portfolio(BaseModel):
 
             return stock
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to add {symbol} to watchlist in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to add {symbol} to watchlist in portfolio {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def stop_watching(self, symbol):
@@ -232,20 +252,32 @@ class Portfolio(BaseModel):
                     return
 
             stock = Stock.get_or_none(Stock.symbol == symbol)
-            rows_deleted = StockToWatch.delete().where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self)).execute()
+            rows_deleted = (
+                StockToWatch.delete()
+                .where((StockToWatch.stock == stock) & (StockToWatch.portfolio == self))
+                .execute()
+            )
             if rows_deleted > 0:
                 log.debug(f"Removed {symbol} from watchlist in portfolio {self.name}.")
             else:  # pragma: no cover
-                log.debug(f"No watchlist entry found for {symbol} in portfolio {self.name}.")
+                log.debug(
+                    f"No watchlist entry found for {symbol} in portfolio {self.name}."
+                )
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to remove {symbol} from watchlist in portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to remove {symbol} from watchlist in portfolio {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def get_watchlist(self):
         try:
-            return list(Stock.select().join(StockToWatch).where(StockToWatch.portfolio == self))
+            return list(
+                Stock.select().join(StockToWatch).where(StockToWatch.portfolio == self)
+            )
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to retrieve watchlist for portfolio {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def add_account(self, name, currency=CurrencyType.USD):
@@ -274,12 +306,16 @@ class Portfolio(BaseModel):
             # TODO: validate inputs
 
             account = Account.get_or_none(
-                (Account.portfolio == self) & (Account.name == name) & (Account.currency == currency.value)
+                (Account.portfolio == self)
+                & (Account.name == name)
+                & (Account.currency == currency.value)
             )
 
             return account
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get account {name} in {currency}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to get account {name} in {currency}: {type(e).__name__} : {e}"
+            )
             raise e
 
 
@@ -290,7 +326,9 @@ class StockToWatch(BaseModel):
 
     class Meta:
         table_name = "stock_to_watch"
-        indexes = ((("portfolio", "stock"), True),)  # Unique constraint on portfolio and stock
+        indexes = (
+            (("portfolio", "stock"), True),
+        )  # Unique constraint on portfolio and stock
 
 
 class Account(BaseModel):
@@ -313,7 +351,11 @@ class Account(BaseModel):
             where_clause = True
             if to_timestamp:
                 where_clause = Balance.timestamp <= to_timestamp
-            balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
+            balance = (
+                self.balances.where(where_clause)
+                .order_by(Balance.timestamp.desc())
+                .first()
+            )
             if balance:
                 log.debug(
                     f"Account {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. "
@@ -324,17 +366,23 @@ class Account(BaseModel):
             log.debug(f"Account {self.name} has no balances.")
             return 0.0
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get cash balance for account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to get cash balance for account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def update_balance(self, timestamp, amount):
         try:
-            log.debug(f"Updating cash balance in account {self.name} at {strtimestamp(timestamp)} with {amount}.")
+            log.debug(
+                f"Updating cash balance in account {self.name} at {strtimestamp(timestamp)} with {amount}."
+            )
 
             current_balance = self.get_cash()
             new_balance = current_balance + amount
             if new_balance < 0:
-                raise ValueError(f"Insufficient funds in account {self.name} to update by {amount:.2f} amount.")
+                raise ValueError(
+                    f"Insufficient funds in account {self.name} to update by {amount:.2f} amount."
+                )
 
             Balance.create(account=self, timestamp=timestamp, cash=new_balance)
 
@@ -343,7 +391,9 @@ class Account(BaseModel):
                 f"Previous Balance={current_balance:.2f}. New Balance={new_balance:.2f}"
             )
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to update cash balance in account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to update cash balance in account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def get_position(self, symbol, to_timestamp=None):
@@ -356,7 +406,11 @@ class Account(BaseModel):
             where_clause = Position.stock == stock
             if to_timestamp:
                 where_clause &= Position.timestamp <= to_timestamp
-            position = self.positions.where(where_clause).order_by(Position.timestamp.desc()).first()
+            position = (
+                self.positions.where(where_clause)
+                .order_by(Position.timestamp.desc())
+                .first()
+            )
             if position:
                 # Fetch the latest price up to the specified timestamp
                 latest_price = stock.get_price(to_timestamp)
@@ -381,7 +435,9 @@ class Account(BaseModel):
             log.debug(f"Account {self.name} has no position in {symbol}.")
             return None
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to get position for {symbol} in account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to get position for {symbol} in account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def update_position(self, timestamp, symbol, quantity, price):
@@ -403,7 +459,9 @@ class Account(BaseModel):
 
             new_size = current_size + quantity
             if new_size < 0:
-                raise ValueError(f"Cannot remove {abs(quantity)} shares from {symbol}; only {current_size} available.")
+                raise ValueError(
+                    f"Cannot remove {abs(quantity)} shares from {symbol}; only {current_size} available."
+                )
 
             if new_size == 0:
                 log.debug(f"Liquidating position for {symbol} in account {self.name}.")
@@ -413,7 +471,9 @@ class Account(BaseModel):
                 new_average_price = current_average_price
                 new_market_price = price
                 if quantity > 0:
-                    total_cost = (current_average_price * current_size) + (price * quantity)
+                    total_cost = (current_average_price * current_size) + (
+                        price * quantity
+                    )
                     new_average_price = total_cost / new_size
 
             new_position = Position.create(
@@ -433,7 +493,9 @@ class Account(BaseModel):
 
             return new_position
         except Exception as e:  # pragma: no covers
-            log.error(f"Failed to create position for {symbol} in account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to create position for {symbol} in account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def update_cash_ledger(self, external_id, timestamp, type, fees, amount):
@@ -447,7 +509,9 @@ class Account(BaseModel):
             fees=fees,
         )
 
-    def update_transaction_ledger(self, external_id, timestamp, type, symbol, fees, quantity, price):
+    def update_transaction_ledger(
+        self, external_id, timestamp, type, symbol, fees, quantity, price
+    ):
         # Record Transaction
         stock = Stock.get(Stock.symbol == symbol)
         TransactionLedger.create(
@@ -465,14 +529,18 @@ class Account(BaseModel):
         try:
             log.info(f"Depositing {amount} into account {self.name}.")
             with db.atomic():
-                self.update_cash_ledger(external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount)
+                self.update_cash_ledger(
+                    external_id, timestamp, TransactionType.DEPOSIT.value, fees, amount
+                )
                 total_amount_to_deposit = amount - fees
                 self.update_balance(timestamp, total_amount_to_deposit)
 
             log.info(f"Deposited {amount} into account {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to deposit {amount} into account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to deposit {amount} into account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def withdraw(self, external_id, timestamp, amount, fees=0.0):
@@ -488,18 +556,24 @@ class Account(BaseModel):
                         f"exceeds available cash {current_balance} in account {self.name}."
                     )
 
-                self.update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
+                self.update_cash_ledger(
+                    external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount
+                )
                 self.update_balance(timestamp, -total_amount_to_withdraw)
 
             log.info(f"Withdrew {amount} from account {self.name}.")
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to withdraw {amount} from account {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to withdraw {amount} from account {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def buy(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         try:
-            log.info(f"Buying {quantity} shares of {symbol} at ${price:.2f} each in account {self.name}.")
+            log.info(
+                f"Buying {quantity} shares of {symbol} at ${price:.2f} each in account {self.name}."
+            )
 
             symbol = _as_validated_symbol(symbol)
 
@@ -511,7 +585,9 @@ class Account(BaseModel):
                         f"Insufficient cash to buy {quantity} shares of {symbol}. "
                         f"Required: {total_cost}. Available: {current_balance}."
                     )
-                    raise ValueError(f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}.")
+                    raise ValueError(
+                        f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}."
+                    )
 
                 # Add symbol to watchlist
                 self.portfolio.start_watching(symbol)
@@ -534,12 +610,18 @@ class Account(BaseModel):
             )
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to buy {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to buy {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}"
+            )
             raise e
 
-    def deposit_in_kind(self, external_id, timestamp, symbol, quantity, cost_basis_per_share, fees=0.0):
+    def deposit_in_kind(
+        self, external_id, timestamp, symbol, quantity, cost_basis_per_share, fees=0.0
+    ):
         try:
-            log.info(f"Depositing {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each in {self.name}.")
+            log.info(
+                f"Depositing {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each in {self.name}."
+            )
 
             symbol = _as_validated_symbol(symbol)
 
@@ -573,15 +655,21 @@ class Account(BaseModel):
                 # Update position
                 self.update_position(timestamp, symbol, quantity, cost_basis_per_share)
 
-            log.info(f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. Fees: ${fees:.2f}.")
+            log.info(
+                f"Deposited {quantity} shares of {symbol} at ${cost_basis_per_share:.2f} each. Fees: ${fees:.2f}."
+            )
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to deposit {quantity} shares of {symbol} at ${cost_basis_per_share:.2f}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def sell(self, external_id, timestamp, symbol, quantity, price, fees=0.0):
         try:
-            log.info(f"Selling {quantity} shares of {symbol} at ${price:.2f} each in {self.name}.")
+            log.info(
+                f"Selling {quantity} shares of {symbol} at ${price:.2f} each in {self.name}."
+            )
 
             symbol = _as_validated_symbol(symbol)
 
@@ -621,7 +709,9 @@ class Account(BaseModel):
             )
             return self
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def get_eod_balance(self, day=None):
@@ -633,7 +723,9 @@ class Account(BaseModel):
             log.debug(f"Account {self.name}'s {day} end of day balance is {cash:.2f}.")
             return cash
         except Exception as e:  # pragma: no cover
-            log.error(f"Failed to retrieve {day} end of day balance for {self.name}: {type(e).__name__} : {e}")
+            log.error(
+                f"Failed to retrieve {day} end of day balance for {self.name}: {type(e).__name__} : {e}"
+            )
             raise e
 
     def get_eod_position(self, symbol, day=None):
@@ -650,7 +742,9 @@ class Account(BaseModel):
                     f"Average Price: {position.average_price:.2f}. Market Price: {position.market_price:.2f}."
                 )
             else:
-                log.debug(f"Account {self.name} has no {day} end of day positions for {symbol}.")
+                log.debug(
+                    f"Account {self.name} has no {day} end of day positions for {symbol}."
+                )
             return position
         except Exception as e:  # pragma: no cover
             log.error(
@@ -662,7 +756,9 @@ class Account(BaseModel):
 class CashLedger(BaseModel):
     id = IntegerField(primary_key=True)
     external_id = TextField(unique=True)
-    account = ForeignKeyField(Account, backref="deposits_and_withdraws", on_delete="CASCADE")
+    account = ForeignKeyField(
+        Account, backref="deposits_and_withdraws", on_delete="CASCADE"
+    )
     timestamp = BigIntegerField()  # Unix epoch time
     amount = FloatField()
     type = TextField(choices=[TransactionType.DEPOSIT, TransactionType.WITHDRAW])
@@ -706,7 +802,9 @@ class Position(BaseModel):
 
     class Meta:
         table_name = "position"
-        indexes = ((("account", "stock", "timestamp"), True),)  # Unique constraint on account, timestamp, and stock
+        indexes = (
+            (("account", "stock", "timestamp"), True),
+        )  # Unique constraint on account, timestamp, and stock
 
 
 class Balance(BaseModel):
@@ -717,4 +815,6 @@ class Balance(BaseModel):
 
     class Meta:
         table_name = "balance"
-        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
+        indexes = (
+            (("account", "timestamp"), True),
+        )  # Unique constraint on account and timestamp

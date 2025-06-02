@@ -1,3 +1,35 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "alfa"
+version = "0.0.1"
+description = "A minimalist platform to run trading strategies."
+authors = [{name = "Mircea Avram", email = "mavram@gmail.com"}]
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "yfinance>=0.2.50",
+    "peewee>=3.17.8",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+urls = {Homepage = "https://github.com/mavram/alfa"}
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.10.0",
+    "build>=1.2.2",
+    "flake8>=7.1.1",
+    "isort>=5.13.2",
+    "pytest>=8.3.3",
+    "pytest-cov>=6.0.0",
+    "setuptools>=80.8.0",
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]

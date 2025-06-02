@@ -157,7 +157,11 @@ def test_start_watching_new_stock(test_db):
     portfolio = Portfolio.create(name="Portfolio", currency="USD")
     stock = portfolio.start_watching(symbol="AAPL", name="Apple Inc.")
     assert stock.symbol == "AAPL"
-    assert StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
+    assert (
+        StockToWatch.select()
+        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
+        .exists()
+    )
 
 
 def test_start_watching_existing_stock(test_db):
@@ -174,7 +178,11 @@ def test_stop_watching(test_db):
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     StockToWatch.create(portfolio=portfolio, stock=stock)
     portfolio.stop_watching("AAPL")
-    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
+    assert (
+        not StockToWatch.select()
+        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
+        .exists()
+    )
 
 
 def test_stop_watching_unknown_stock(test_db):
@@ -207,10 +215,14 @@ def test_withdraw_exceeds_balance(test_db):
 
     # Attempt to withdraw $900.00 with $200.00 in fees, totaling $1,100.00
     with pytest.raises(ValueError):
-        portfolio.withdraw(external_id="wd_exceed1", timestamp=1638316800, amount=900.0, fees=200.0)
+        portfolio.withdraw(
+            external_id="wd_exceed1", timestamp=1638316800, amount=900.0, fees=200.0
+        )
 
     # Assert that the cash balance is now $0.00
-    assert portfolio.cash == 1000.0, f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
+    assert (
+        portfolio.cash == 1000.0
+    ), f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
 
 
 def test_buy_insufficient_cash(test_db):
@@ -237,7 +249,12 @@ def test_buy_successful(test_db):
         fees=10.0,
     )
     assert portfolio.cash == 1000.0 - (10 * 50.0 + 10.0)
-    position = Position.select().join(Stock).where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL")).get()
+    position = (
+        Position.select()
+        .join(Stock)
+        .where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL"))
+        .get()
+    )
     assert position.size == 10
     assert position.average_price == 50.0
     transaction = TransactionLedger.get(TransactionLedger.external_id == "buy1")
@@ -272,7 +289,9 @@ def test_sell_successful(test_db):
         fees=5.0,
     )
     assert portfolio.cash == 1000.0 + (5 * 55.0 - 5.0)
-    position = Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
+    position = Position.get(
+        (Position.portfolio == portfolio) & (Position.stock == stock)
+    )
     assert position.size == 5
     assert position.average_price == 50.0
     transaction = TransactionLedger.get(TransactionLedger.external_id == "sell1")
@@ -296,7 +315,11 @@ def test_sell_entire_position(test_db):
     assert portfolio.cash == 1000.0 + (10 * 55.0 - 5.0)
     with pytest.raises(Position.DoesNotExist):
         Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
-    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
+    assert (
+        not StockToWatch.select()
+        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
+        .exists()
+    )
     transaction = TransactionLedger.get(TransactionLedger.external_id == "sell2")
     assert transaction.quantity == -10
     assert transaction.type == TransactionType.SELL.value
@@ -328,7 +351,9 @@ def test_sell_quantity_exceeds_position_size(test_db):
 
     # Re-fetch the Portfolio to verify the cash balance
     portfolio = Portfolio.get_by_id(portfolio.id)
-    assert portfolio.cash == 1000.0, f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
+    assert (
+        portfolio.cash == 1000.0
+    ), f"Expected cash balance to be $1000.00, got ${portfolio.cash}"
 
 
 def test_deposit_in_kind_insufficient_cash(test_db):
@@ -355,7 +380,12 @@ def test_deposit_in_kind_successful(test_db):
         fees=10.0,
     )
     assert portfolio.cash == 1000.0 - 10.0
-    position = Position.select().join(Stock).where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL")).get()
+    position = (
+        Position.select()
+        .join(Stock)
+        .where((Position.portfolio == portfolio) & (Stock.symbol == "AAPL"))
+        .get()
+    )
     assert position.size == 10
     assert position.average_price == 50.0
     transaction = TransactionLedger.get(TransactionLedger.external_id == "dik1")
@@ -395,7 +425,11 @@ def test_stop_watching_with_active_position(test_db):
     StockToWatch.create(portfolio=portfolio, stock=stock)
     Position.create(portfolio=portfolio, stock=stock, size=10, average_price=50.0)
     portfolio.stop_watching("AAPL")
-    assert StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
+    assert (
+        StockToWatch.select()
+        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
+        .exists()
+    )
 
 
 def test_stop_watching_without_position(test_db):
@@ -403,7 +437,11 @@ def test_stop_watching_without_position(test_db):
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     StockToWatch.create(portfolio=portfolio, stock=stock)
     portfolio.stop_watching("AAPL")
-    assert not StockToWatch.select().where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock)).exists()
+    assert (
+        not StockToWatch.select()
+        .where((StockToWatch.portfolio == portfolio) & (StockToWatch.stock == stock))
+        .exists()
+    )
 
 
 def test_create_or_update_position_addition(test_db):
@@ -437,7 +475,9 @@ def test_create_or_update_position_average_price_update(test_db):
     stock = Stock.create(id=1, symbol="AAPL", name="Apple Inc.")
     Position.create(portfolio=portfolio, stock=stock, size=10, average_price=50.0)
     portfolio._create_or_update_position("AAPL", 10, 60.0)
-    position = Position.get((Position.portfolio == portfolio) & (Position.stock == stock))
+    position = Position.get(
+        (Position.portfolio == portfolio) & (Position.stock == stock)
+    )
     assert position.size == 20
     assert position.average_price == 55.0
 

@@ -1,7 +1,7 @@
 # alfa
-A minimalist platform for running trading strategies.
+A minimalist platform to run trading strategies.
 
-## Running from Command Line
+## Testing from Command Line
  a) `python -m venv .venv`
  b) `source .venv/bin/activate`
  c) `pip install --upgrade pip`

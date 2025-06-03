@@ -1,4 +1,0 @@
-[tool.black]
-line-length = 150
-target-version = ["py313"]
-skip-string-normalization = false

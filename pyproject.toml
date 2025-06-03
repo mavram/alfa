@@ -6,19 +6,16 @@ build-backend = "setuptools.build_meta"
 name = "alfa"
 version = "0.0.1"
 description = "A minimalist platform to run trading strategies."
-authors = [{name = "Mircea Avram", email = "mavram@gmail.com"}]
-license = {file = "LICENSE"}
+authors = [{ name = "Mircea Avram", email = "mavram@gmail.com" }]
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
-    "yfinance>=0.2.50",
-    "peewee>=3.17.8",
-]
+dependencies = ["yfinance>=0.2.50", "peewee>=3.17.8"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
 ]
-urls = {Homepage = "https://github.com/mavram/alfa"}
+urls = { Homepage = "https://github.com/mavram/alfa" }
 
 [project.optional-dependencies]
 dev = [
@@ -30,6 +27,28 @@ dev = [
     "pytest-cov>=6.0.0",
     "setuptools>=80.8.0",
 ]
+
+[tool.black]
+line-length = 150
+target-version = ["py313"]
+skip-string-normalization = false
+
+[tool.flake8]
+max-line-length = 150
+exclude = [".venv", "__pycache__", "bin", "build", "lib"]
+
+[tool.isort]
+profile = "black"
+line_length = 150
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+addopts = "--verbose --disable-warnings --cov=alfa --cov-report=term-missing"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.md"]

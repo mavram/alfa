@@ -33,6 +33,18 @@ line-length = 150
 target-version = ["py313"]
 skip-string-normalization = false
 
+[tool.coverage.run]
+omit = ["*/tests/*", "*/__init__.py", "*/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+]
+fail_under = 100
+
 [tool.flake8]
 max-line-length = 150
 exclude = [".venv", "__pycache__", "bin", "build", "lib"]

@@ -3,15 +3,8 @@ import os
 from datetime import datetime, time
 from enum import Enum
 
-from peewee import (
-    BigIntegerField,
-    FloatField,
-    ForeignKeyField,
-    IntegerField,
-    Model,
-    SqliteDatabase,
-    TextField,
-)
+from peewee import BigIntegerField, FloatField, ForeignKeyField, IntegerField, Model, SqliteDatabase, TextField
+
 
 log = logging.getLogger("alfa")
 logging.getLogger("peewee").setLevel(max(log.getEffectiveLevel(), logging.ERROR))
@@ -85,9 +78,7 @@ class Stock(BaseModel):
                 from_and_to_str = f"From {strtimestamp(from_timestamp)} to {strtimestamp(to_timestamp)}."
             price = self.prices.where(where_clause).order_by(Price.timestamp.desc()).first()
             if price:
-                log.debug(
-                    f"{self.symbol}'s most recent price is from {strtimestamp(price.timestamp)}. " f"{price.adjusted_close:.2f}, {from_and_to_str}"
-                )
+                log.debug(f"{self.symbol}'s most recent price is from {strtimestamp(price.timestamp)}. {price.adjusted_close:.2f}, {from_and_to_str}")
             else:
                 log.debug(f"{self.symbol} has no prices. {from_and_to_str}")
             return price
@@ -310,7 +301,7 @@ class Account(BaseModel):
                 where_clause = Balance.timestamp <= to_timestamp
             balance = self.balances.where(where_clause).order_by(Balance.timestamp.desc()).first()
             if balance:
-                log.debug(f"Account {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. " f"Cash: {balance.cash:.2f}.")
+                log.debug(f"Account {self.name}'s most recent cash balance is from {strtimestamp(balance.timestamp)}. Cash: {balance.cash:.2f}.")
                 return balance.cash
 
             log.debug(f"Account {self.name} has no balances.")
@@ -330,7 +321,7 @@ class Account(BaseModel):
 
             Balance.create(account=self, timestamp=timestamp, cash=new_balance)
 
-            log.debug(f"Updated cash balance in account {self.name}: " f"Previous Balance={current_balance:.2f}. New Balance={new_balance:.2f}")
+            log.debug(f"Updated cash balance in account {self.name}: Previous Balance={current_balance:.2f}. New Balance={new_balance:.2f}")
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to update cash balance in account {self.name}: {type(e).__name__} : {e}")
             raise e
@@ -380,9 +371,7 @@ class Account(BaseModel):
             if not stock:
                 raise ValueError(f"Stock {symbol} does not exist in the database.")
 
-            log.debug(
-                f"Updating account {self.name}'s {symbol} position at {strtimestamp(timestamp)} " f"with {quantity} shares at {price:.2f} each."
-            )
+            log.debug(f"Updating account {self.name}'s {symbol} position at {strtimestamp(timestamp)} with {quantity} shares at {price:.2f} each.")
 
             position = self.get_position(symbol)
 
@@ -471,9 +460,7 @@ class Account(BaseModel):
                 total_amount_to_withdraw = amount + fees
                 current_balance = self.get_cash()
                 if total_amount_to_withdraw > current_balance:
-                    raise ValueError(
-                        f"Withdrawal amount {amount} and fees {fees} " f"exceeds available cash {current_balance} in account {self.name}."
-                    )
+                    raise ValueError(f"Withdrawal amount {amount} and fees {fees} exceeds available cash {current_balance} in account {self.name}.")
 
                 self.update_cash_ledger(external_id, timestamp, TransactionType.WITHDRAW.value, fees, amount)
                 self.update_balance(timestamp, -total_amount_to_withdraw)
@@ -494,7 +481,7 @@ class Account(BaseModel):
                 total_cost = quantity * price + fees
                 current_balance = self.get_cash()
                 if current_balance < total_cost:
-                    log.error(f"Insufficient cash to buy {quantity} shares of {symbol}. " f"Required: {total_cost}. Available: {current_balance}.")
+                    log.error(f"Insufficient cash to buy {quantity} shares of {symbol}. Required: {total_cost}. Available: {current_balance}.")
                     raise ValueError(f"Account {self.name} does not have sufficient cash to buy {quantity} shares of {symbol}.")
 
                 # Add symbol to watchlist
@@ -533,9 +520,7 @@ class Account(BaseModel):
                         f"Insufficient cash to cover fees for depositing {quantity} shares of {symbol}. "
                         f"Required Fees: ${total_fees:.2f}. Available Cash: ${current_balance:.2f}."
                     )
-                    raise ValueError(
-                        f"Account {self.name} does not have sufficient cash to cover fees " f"for depositing {quantity} shares of {symbol}."
-                    )
+                    raise ValueError(f"Account {self.name} does not have sufficient cash to cover fees for depositing {quantity} shares of {symbol}.")
 
                 self.update_transaction_ledger(
                     external_id,
@@ -594,7 +579,7 @@ class Account(BaseModel):
                     # Position was liquidated, stop watching
                     self.portfolio.stop_watching(symbol)
 
-            log.info(f"Sold {quantity} shares of {symbol} at ${price:.2f} each. " f"Total Proceeds: ${total_proceeds:.2f}. Fees: ${fees:.2f}.")
+            log.info(f"Sold {quantity} shares of {symbol} at ${price:.2f} each. Total Proceeds: ${total_proceeds:.2f}. Fees: ${fees:.2f}.")
             return self
         except Exception as e:  # pragma: no cover
             log.error(f"Failed to sell {quantity} shares of {symbol} at ${price:.2f}: {type(e).__name__} : {e}")
@@ -691,4 +676,8 @@ class Balance(BaseModel):
 
     class Meta:
         table_name = "balance"
+        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
+        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
+        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
+        indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp
         indexes = ((("account", "timestamp"), True),)  # Unique constraint on account and timestamp

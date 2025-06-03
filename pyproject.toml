@@ -19,22 +19,13 @@ urls = { Homepage = "https://github.com/mavram/alfa" }
 
 [project.optional-dependencies]
 dev = [
-    "black>=24.10.0",
+
     "build>=1.2.2",
-    "flake8>=7.1.1",
-    "isort>=5.13.2",
+    "ruff>=0.11.12",
     "pytest>=8.3.3",
     "pytest-cov>=6.0.0",
     "setuptools>=80.8.0",
 ]
-
-[tool.black]
-line-length = 150
-target-version = ["py313"]
-skip-string-normalization = false
-
-[tool.coverage.run]
-omit = ["*/tests/*", "*/__init__.py", "*/__main__.py"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -45,15 +36,32 @@ exclude_lines = [
 ]
 fail_under = 100
 
-[tool.flake8]
-max-line-length = 150
-exclude = [".venv", "__pycache__", "bin", "build", "lib"]
+[tool.ruff]
+line-length = 150
+target-version = "py313"
+exclude = ["__pycache__", ".venv", "bin", "lib", "tests"]
 
-[tool.isort]
-profile = "black"
-line_length = 150
-multi_line_output = 3
-include_trailing_comma = true
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors (Flake8)
+    "W", # pycodestyle warnings (Flake8)
+    "F", # Pyflakes (Flake8)
+    "I", # isort
+    "B", # flake8-bugbear (optional, for additional checks)
+    # "D", # pydocstyle (optional, for docstring checks)
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"            # Match Black's default
+indent-style = "space"            # Match Black's default
+skip-magic-trailing-comma = false # Match Black's trailing commas
+line-ending = "lf"                # Match Black's default
+
+[tool.ruff.lint.isort]
+force-single-line = false # Match isort's multi_line_output = 3
+combine-as-imports = true # Align with Black's style
+lines-after-imports = 2   # Match Black's default
 
 [tool.pytest.ini_options]
 addopts = "--verbose --disable-warnings --cov=alfa --cov-report=term-missing"

@@ -39,7 +39,18 @@ fail_under = 100
 [tool.ruff]
 line-length = 150
 target-version = "py313"
-exclude = ["__pycache__", ".venv", "bin", "lib", "tests"]
+exclude = [
+    "__pycache__",
+    ".pytest_cache",
+    ".ropeproject",
+    ".ruff_cache",
+    ".venv",
+    "bin",
+    "build",
+    "data",
+    "lib",
+    "tests",
+]
 
 [tool.ruff.lint]
 select = [
